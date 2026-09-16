@@ -1,0 +1,6 @@
+{
+  "name": "Match Point Promove - CRM de Campo B2B",
+  "description": "CRM B2B para promotoria técnica e comercial veterinária com arquitetura multi-tenant, check-in em campo, isolamento RLS e régua de follow-up automatizada. Precisão para chegar. Estratégia para permanecer.",
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

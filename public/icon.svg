@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111111" />
+      <stop offset="100%" stop-color="#1e1e1e" />
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF530D" />
+      <stop offset="50%" stop-color="#FF7A30" />
+      <stop offset="100%" stop-color="#FBBF3D" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#FF530D" flood-opacity="0.45" />
+    </filter>
+  </defs>
+  
+  <!-- Background with slight rounded squircle -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)" />
+  <rect width="504" height="504" x="4" y="4" rx="106" fill="none" stroke="#2e2e2e" stroke-width="4" />
+  
+  <!-- Outer Target Orbit Ring -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#FF530D" stroke-width="8" stroke-dasharray="16 12" opacity="0.4" />
+  
+  <!-- Inner Target Ring -->
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#FBBF3D" stroke-width="6" opacity="0.6" />
+  
+  <!-- Stylized "M" and Cross / Precision Target Point -->
+  <g filter="url(#glow)">
+    <!-- Central Modern Match Point Shield / Target -->
+    <path d="M 160 340 L 160 172 L 256 268 L 352 172 L 352 340" fill="none" stroke="url(#orangeGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- Precision Bullseye Center Dot -->
+    <circle cx="256" cy="330" r="16" fill="#FBBF3D" />
+  </g>
+</svg>
