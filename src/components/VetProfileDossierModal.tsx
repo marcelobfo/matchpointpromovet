@@ -21,7 +21,8 @@ import {
   Plus,
   ExternalLink,
   ShieldCheck,
-  Award
+  Award,
+  UserCheck
 } from 'lucide-react';
 import { Veterinarian, Visit, VisitReport, Tenant, User, UserRole } from '../types';
 
@@ -68,6 +69,14 @@ export const VetProfileDossierModal: React.FC<VetProfileDossierModalProps> = ({
   const vetVisits = roleFilteredVisits
     .filter((v) => v.veterinarian_id === vet.id)
     .sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
+
+  // Global last visit across all promoters for this client
+  const allGlobalVisitsForVet = visits
+    .filter((v) => v.veterinarian_id === vet.id)
+    .sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
+  const lastGlobalVisit = allGlobalVisitsForVet[0] || null;
+  const lastPromoter = lastGlobalVisit ? promoters.find((p) => p.id === lastGlobalVisit.promoter_id) : null;
+  const lastPromoterName = lastPromoter?.full_name || (lastGlobalVisit?.promoter_id === 'user-admin' ? 'Administrador Match Point' : 'Promotor');
 
   // Check if birthday is today or upcoming
   const getBirthdayStatus = (bDate?: string) => {
@@ -280,6 +289,35 @@ export const VetProfileDossierModal: React.FC<VetProfileDossierModalProps> = ({
                 </button>
               </div>
 
+              {/* Persistent Last Visiting Promoter Banner (Mandatory Display) */}
+              {lastGlobalVisit ? (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-black">
+                      <UserCheck className="h-5 w-5 text-emerald-700" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 block">
+                        Última Visita Realizada a este Cliente
+                      </span>
+                      <p className="font-extrabold text-emerald-950 text-sm truncate">
+                        Promotor: {lastPromoterName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <span className="text-xs font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-3 py-1 rounded-lg">
+                      Data: {new Date(lastGlobalVisit.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-500 font-medium flex items-center gap-2.5">
+                  <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+                  <span>Nenhuma visita registrada anteriormente para este médico-veterinário em território.</span>
+                </div>
+              )}
+
               {vetVisits.length === 0 ? (
                 <div className="bg-[#FDF2E7]/40 rounded-2xl p-8 text-center border border-[#E8D9C8] space-y-3">
                   <Clock className="h-10 w-10 text-slate-400 mx-auto" />
@@ -288,7 +326,9 @@ export const VetProfileDossierModal: React.FC<VetProfileDossierModalProps> = ({
                   </h4>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
                     {isPromoterRole
-                      ? 'Inicie seu atendimento em campo para representar os contratantes e construir seu histórico com este médico-veterinário.'
+                      ? (lastGlobalVisit
+                          ? `Este médico foi visitado pela última vez por ${lastPromoterName} em ${new Date(lastGlobalVisit.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}. Em respeito à regra de sigilo e isolamento entre promotores, os apontamentos individuais permanecem confidenciais. Inicie seu check-in para construir seu histórico.`
+                          : 'Inicie seu atendimento em campo para representar os contratantes e construir seu histórico com este médico-veterinário.')
                       : 'Inicie o primeiro check-in de campo para representar as marcas e gerar o dossiê deste médico-veterinário.'}
                   </p>
                   <button

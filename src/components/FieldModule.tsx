@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   UserCheck,
@@ -106,6 +106,14 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   const [selectedPromoterId, setSelectedPromoterId] = useState(
     currentUserId || (promoters[0]?.id ?? 'user-admin')
   );
+
+  // Keep selected promoter in sync with currentUserId
+  useEffect(() => {
+    if (currentUserId) {
+      setSelectedPromoterId(currentUserId);
+    }
+  }, [currentUserId]);
+
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [generalNotes, setGeneralNotes] = useState('');
   
@@ -556,6 +564,12 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                 );
               })
               .map((vet) => {
+                const allVetVisits = visits
+                  .filter((v) => v.veterinarian_id === vet.id)
+                  .sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
+                const lastVisit = allVetVisits[0];
+                const lastPromoter = lastVisit ? promoters.find((p) => p.id === lastVisit.promoter_id) : null;
+                const lastPromoterName = lastPromoter?.full_name || (lastVisit?.promoter_id === 'user-admin' ? 'Administrador Match Point' : 'Promotor');
                 const vetVisitsCount = visibleVisits.filter((v) => v.veterinarian_id === vet.id).length;
 
                 return (
@@ -596,8 +610,35 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                         </div>
                       </div>
 
+                      {/* Last Visit Information - Always displaying the last visiting promoter */}
+                      {lastVisit ? (
+                        <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-xl p-2.5 text-[11px] space-y-1">
+                          <div className="flex items-center justify-between gap-1 text-[10px] text-emerald-800 font-bold uppercase tracking-wider">
+                            <span className="flex items-center gap-1">
+                              <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>Última Visita:</span>
+                            </span>
+                            <span className="bg-emerald-200/70 text-emerald-900 px-1.5 py-0.5 rounded font-extrabold text-[10px]">
+                              {new Date(lastVisit.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                          <div className="font-bold text-slate-700 text-xs truncate flex items-center justify-between gap-1">
+                            <span className="text-slate-500 font-normal text-[10px]">Promotor:</span>
+                            <span className="text-emerald-950 font-extrabold truncate">{lastPromoterName}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-500 font-medium flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5 text-slate-400" />
+                            <span>Status:</span>
+                          </span>
+                          <span className="italic text-slate-600 font-semibold text-[10px]">Nenhuma visita realizada ainda</span>
+                        </div>
+                      )}
+
                       <div className="bg-[#FDF2E7]/60 p-2 rounded-xl border border-[#E8D9C8] flex items-center justify-between text-[11px] font-bold text-slate-700">
-                        <span>Histórico de Visitas:</span>
+                        <span>{isPromoterRole ? 'Suas Visitas (Sessão):' : 'Histórico de Visitas:'}</span>
                         <span className="text-[#FF530D]">{vetVisitsCount} {vetVisitsCount === 1 ? 'visita' : 'visitas'}</span>
                       </div>
                     </div>
@@ -777,6 +818,42 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                     </a>
                   </div>
                 </div>
+
+                {/* Last Visit Information for Selected Vet */}
+                {(() => {
+                  const selVetVisits = visits
+                    .filter((v) => v.veterinarian_id === selectedVet.id)
+                    .sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
+                  const lastVisitSel = selVetVisits[0];
+                  const lastProm = lastVisitSel ? promoters.find((p) => p.id === lastVisitSel.promoter_id) : null;
+                  const lastPromName = lastProm?.full_name || (lastVisitSel?.promoter_id === 'user-admin' ? 'Administrador Match Point' : 'Promotor');
+
+                  return lastVisitSel ? (
+                    <div className="bg-emerald-50/90 border border-emerald-300/80 rounded-xl p-3 text-xs flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-8 w-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <UserCheck className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                            Última Visita Realizada a este Cliente
+                          </span>
+                          <span className="font-extrabold text-emerald-950 truncate block text-xs sm:text-sm">
+                            Promotor: {lastPromName}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded-md shrink-0">
+                        {new Date(lastVisitSel.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-500 font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+                      <span>Primeira visita a ser realizada para este médico-veterinário</span>
+                    </div>
+                  );
+                })()}
 
                 {selectedVet.notes_general && (
                   <div className="bg-[#FDF2E7] p-3 rounded-xl text-xs text-slate-700 border border-[#E8D9C8] leading-relaxed">

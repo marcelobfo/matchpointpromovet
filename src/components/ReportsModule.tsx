@@ -493,6 +493,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <th className="p-3 whitespace-nowrap">Data</th>
                       <th className="p-3">Médico(a) &amp; CRMV</th>
                       <th className="p-3">Local &amp; Endereço</th>
+                      <th className="p-3 whitespace-nowrap">Promotor(a)</th>
                       <th className="p-3 whitespace-nowrap">Sentimento</th>
                       <th className="p-3">Interesse Específico</th>
                       <th className="p-3">Observações Sigilosas</th>
@@ -502,6 +503,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     {filteredReports.map((rep) => {
                       const visit = visitMap.get(rep.visit_id);
                       const vet = visit ? vetMap.get(visit.veterinarian_id) : undefined;
+                      const promoterUser = visit ? users.find((u) => u.id === visit.promoter_id) : undefined;
+                      const promoterName = promoterUser?.full_name || (visit?.promoter_id === 'user-admin' ? 'Administrador Match Point' : 'Promotor');
                       const isCrit = rep.critical_action_needed || rep.sentiment === 'complaint';
 
                       return (
@@ -525,6 +528,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                             <div className="font-semibold text-[#111111]">{vet?.workplace_name || 'Clínica'}</div>
                             <div className="text-[10px] text-slate-500">
                               {vet?.neighborhood ? `${vet.neighborhood}, ` : ''}{vet?.city || 'Vitória'}
+                            </div>
+                          </td>
+                          <td className="p-3 align-top whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                              <UserCheck className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                              <span className="font-extrabold text-emerald-950 text-xs">{promoterName}</span>
                             </div>
                           </td>
                           <td className="p-3 whitespace-nowrap align-top">
@@ -562,6 +571,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 {filteredReports.map((rep) => {
                   const visit = visitMap.get(rep.visit_id);
                   const vet = visit ? vetMap.get(visit.veterinarian_id) : undefined;
+                  const promoterUser = visit ? users.find((u) => u.id === visit.promoter_id) : undefined;
+                  const promoterName = promoterUser?.full_name || (visit?.promoter_id === 'user-admin' ? 'Administrador Match Point' : 'Promotor');
                   const isCrit = rep.critical_action_needed || rep.sentiment === 'complaint';
 
                   return (
@@ -628,6 +639,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                             {rep.service_interest || 'Apresentação'}
                           </span>
                         </div>
+                      </div>
+
+                      {/* Visiting Promoter */}
+                      <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-xs">
+                        <UserCheck className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                        <span className="text-slate-500 font-medium text-[11px]">Promotor Responsável:</span>
+                        <span className="font-extrabold text-emerald-950 text-xs truncate">{promoterName}</span>
                       </div>
 
                       {/* Observations */}

@@ -141,6 +141,16 @@ export const INITIAL_USERS: User[] = [
     created_at: '2026-02-01T00:00:00Z'
   },
   {
+    id: 'user-promoter-fernanda',
+    tenant_id: null,
+    full_name: 'Fernanda Diniz',
+    email: 'fernanda.promotora@matchpoint.com.br',
+    role: 'promoter',
+    phone: '(11) 98765-4321',
+    is_active: true,
+    created_at: '2026-03-01T00:00:00Z'
+  },
+  {
     id: 'user-client-mova',
     tenant_id: 'tenant-mova',
     full_name: 'Dr. Roberto Almeida (Diretor Mova)',

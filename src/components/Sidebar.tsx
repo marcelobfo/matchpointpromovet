@@ -283,25 +283,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
 
-          {currentUser.role === 'super_admin' ? (
-            <button
-              id="btn-mobile-context-switch"
-              onClick={() => setIsContextModalOpen(true)}
-              className="flex items-center gap-1.5 bg-[#1c1c1c] active:bg-[#282828] border border-[#333333] px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#FDF2E7] cursor-pointer"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-[#FF530D]" />
-              <span className="text-[11px] font-medium max-w-[85px] truncate">
-                {roleInfo.label}
-              </span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-[#1c1c1c] border border-[#333333] px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#FDF2E7]">
-              <span className={`h-2 w-2 rounded-full ${currentUser.role === 'promoter' ? 'bg-emerald-500' : 'bg-[#FBBF3D]'}`} />
-              <span className="text-[11px] font-medium max-w-[95px] truncate">
-                {currentUser.full_name.split(' ')[0]}
-              </span>
-            </div>
-          )}
+          <button
+            id="btn-mobile-context-switch"
+            onClick={() => setIsContextModalOpen(true)}
+            className="flex items-center gap-1.5 bg-[#1c1c1c] active:bg-[#282828] border border-[#333333] px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#FDF2E7] cursor-pointer"
+            title="Alternar Usuário e Testar Isolamento RLS"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#FF530D]" />
+            <span className="text-[11px] font-medium max-w-[95px] truncate">
+              {currentUser.full_name.split(' ')[0]} ({roleInfo.label})
+            </span>
+          </button>
 
           <button
             onClick={onLogout}
@@ -395,19 +387,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
 
-              {currentUser.role === 'super_admin' && (
                 <button
                   id="btn-sidebar-quick-context"
                   onClick={() => setIsContextModalOpen(true)}
                   className="p-1.5 rounded-lg bg-[#202020] hover:bg-[#2a2a2a] text-[#FBBF3D] border border-[#333333] shrink-0"
-                  title="Simular Perfis e RLS"
+                  title="Alternar Perfil / Testar Isolamento RLS"
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" />
                 </button>
-              )}
-            </div>
+              </div>
 
-            {/* If Tenant RLS filter is active */}
+              {/* If Tenant RLS filter is active */}
             {currentTenantId && currentUser.role !== 'tenant_client' && (
               <div className="mt-2 text-[10px] bg-[#FBBF3D]/10 text-[#FBBF3D] px-2 py-1 rounded border border-[#FBBF3D]/20 flex items-center justify-between">
                 <span className="truncate font-semibold">RLS: {activeTenant?.trade_name}</span>
@@ -621,7 +611,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {u.role === 'super_admin'
                             ? 'Super Admin (Acesso Completo)'
                             : u.role === 'promoter'
-                            ? 'Promotor Match Point'
+                            ? (u.id === 'user-promoter-fernanda' ? 'Promotora • 0 Visitas (Teste de Isolamento RLS)' : 'Promotor Match Point')
                             : 'Cliente Contratante (Isolamento RLS)'}
                         </div>
                       </div>
