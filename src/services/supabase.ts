@@ -1161,6 +1161,135 @@ DO $$ BEGIN
         OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid()::TEXT AND role = 'super_admin')
     );
 EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+-- 14. GATILHOS AUTOMÁTICOS: Régua de Follow-up (D+7, D+14 e Alerta Crítico) com Atribuição ao Promotor Responsável
+CREATE OR REPLACE FUNCTION public.fn_trigger_generate_follow_up_tasks()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_vet_id TEXT;
+    v_visit_date DATE;
+    v_promoter_id TEXT;
+BEGIN
+    -- Captura médico, data da visita e o promotor que realizou o atendimento
+    SELECT veterinarian_id, visit_date::DATE, promoter_id 
+    INTO v_vet_id, v_visit_date, v_promoter_id
+    FROM public.visits
+    WHERE id = NEW.visit_id;
+
+    -- 1. Agendar 1º Follow-up (D+7) atribuído estritamente ao promotor que visitou
+    INSERT INTO public.follow_up_tasks (
+        id,
+        visit_report_id,
+        tenant_id,
+        veterinarian_id,
+        assigned_to,
+        action_type,
+        due_date,
+        description,
+        status
+    ) VALUES (
+        'task-' || substr(md5(random()::text), 1, 8),
+        NEW.id,
+        NEW.tenant_id,
+        v_vet_id,
+        v_promoter_id,
+        'first_contact_7d',
+        (v_visit_date + INTERVAL '7 days')::DATE::TEXT,
+        '1º Follow-up D+7 pós-visita para reforço do contratante',
+        'pending'
+    );
+
+    -- 2. Agendar 2º Follow-up (D+14) atribuído ao mesmo promotor
+    INSERT INTO public.follow_up_tasks (
+        id,
+        visit_report_id,
+        tenant_id,
+        veterinarian_id,
+        assigned_to,
+        action_type,
+        due_date,
+        description,
+        status
+    ) VALUES (
+        'task-' || substr(md5(random()::text), 1, 8),
+        NEW.id,
+        NEW.tenant_id,
+        v_vet_id,
+        v_promoter_id,
+        'second_contact_14d',
+        (v_visit_date + INTERVAL '14 days')::DATE::TEXT,
+        '2º Follow-up D+14 pós-visita e acompanhamento de adesão',
+        'pending'
+    );
+
+    -- 3. Se for classificado como Reclamação ou Alerta Crítico, agendar tratativa IMEDIATA (D+0)
+    IF NEW.critical_action_needed = TRUE OR NEW.sentiment = 'complaint' THEN
+        INSERT INTO public.follow_up_tasks (
+            id,
+            visit_report_id,
+            tenant_id,
+            veterinarian_id,
+            assigned_to,
+            action_type,
+            due_date,
+            description,
+            status
+        ) VALUES (
+            'task-' || substr(md5(random()::text), 1, 8),
+            NEW.id,
+            NEW.tenant_id,
+            v_vet_id,
+            v_promoter_id,
+            'critical_resolution',
+            CURRENT_DATE::TEXT,
+            'ATENÇÃO: Resolução urgente de apontamento crítico/reclamação',
+            'pending'
+        );
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_after_visit_report_insert ON public.visit_reports;
+CREATE TRIGGER trg_after_visit_report_insert
+AFTER INSERT ON public.visit_reports
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_trigger_generate_follow_up_tasks();
+
+-- 15. VIEW: Última Visita e Promotor Responsável por Veterinário
+-- Expõe metadata territorial (quem esteve lá por último e quando) preservando o sigilo de notas privadas
+CREATE OR REPLACE VIEW public.v_veterinarians_with_last_visit AS
+SELECT 
+    v.id AS veterinarian_id,
+    v.full_name AS veterinarian_name,
+    v.crmv,
+    v.specialty,
+    v.whatsapp,
+    v.workplace_name,
+    v.neighborhood,
+    v.city,
+    lv.id AS last_visit_id,
+    lv.visit_date AS last_visit_date,
+    lv.check_in_timestamp AS last_visit_timestamp,
+    lv.promoter_id AS last_promoter_id,
+    COALESCE(u.full_name, 'Promotor Match Point') AS last_promoter_name,
+    u.phone AS last_promoter_phone
+FROM public.veterinarians v
+LEFT JOIN LATERAL (
+    SELECT 
+        vis.id,
+        vis.visit_date,
+        vis.check_in_timestamp,
+        vis.promoter_id
+    FROM public.visits vis
+    WHERE vis.veterinarian_id = v.id
+    ORDER BY vis.visit_date DESC, vis.check_in_timestamp DESC
+    LIMIT 1
+) lv ON true
+LEFT JOIN public.users u ON u.id = lv.promoter_id;
+
+GRANT SELECT ON public.v_veterinarians_with_last_visit TO authenticated, anon;
 `;
   }
 };

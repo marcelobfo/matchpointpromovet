@@ -22,10 +22,13 @@ import {
   WifiOff,
   BookOpen,
   Users,
-  BarChart3
+  BarChart3,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { Tenant, User, UserRole } from '../types';
 import { MatchPointLogo } from './MatchPointLogo';
+import { StorageService } from '../services/storage';
 
 interface SidebarProps {
   activeTab: string;
@@ -74,6 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
+  const [showConfirmMode, setShowConfirmMode] = useState<'simulation' | 'production' | null>(null);
 
   const fallbackUser: User = {
     id: currentUserId || 'user-admin',
@@ -550,6 +554,97 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               )}
             </div>
+          )}
+
+          {/* System Mode Switcher (Simulation vs. Production) */}
+          {(!isCollapsed || isMobileOpen) ? (
+            <div className="bg-[#1a1a1a] rounded-xl p-2.5 border border-[#2a2a2a] space-y-1.5 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  Ambiente de Dados
+                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                  StorageService.getSystemMode() === 'production' 
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                    : 'bg-[#FBBF3D]/10 text-[#FBBF3D] border border-[#FBBF3D]/20'
+                }`}>
+                  {StorageService.getSystemMode() === 'production' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'}
+                </span>
+              </div>
+              <p className="text-[9px] text-slate-400 leading-tight">
+                {StorageService.getSystemMode() === 'production' 
+                  ? 'Base de dados 100% limpa ativa. Pronto para operação real.' 
+                  : 'Modo demonstração/homologação ativo com veterinários fictícios.'}
+              </p>
+
+              {showConfirmMode ? (
+                <div className="bg-[#222222] p-2 rounded-lg border border-[#333333] space-y-2 mt-1.5 animate-fadeIn">
+                  <p className="text-[9px] font-semibold text-white leading-snug">
+                    Confirmar mudança para Modo {showConfirmMode === 'production' ? 'Produção (Limpo)' : 'Homologação'}?
+                  </p>
+                  <div className="flex gap-1.5">
+                    <button
+                      id="btn-confirm-mode"
+                      onClick={() => {
+                        StorageService.setSystemMode(showConfirmMode);
+                        setShowConfirmMode(null);
+                        window.location.reload();
+                      }}
+                      className="flex-1 py-1 px-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] rounded-md transition-all cursor-pointer text-center"
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      id="btn-cancel-mode"
+                      onClick={() => setShowConfirmMode(null)}
+                      className="flex-1 py-1 px-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 font-bold text-[9px] rounded-md transition-all cursor-pointer text-center"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  id="btn-toggle-system-mode"
+                  onClick={() => {
+                    const currentMode = StorageService.getSystemMode();
+                    const nextMode = currentMode === 'simulation' ? 'production' : 'simulation';
+                    setShowConfirmMode(nextMode);
+                  }}
+                  className="w-full mt-1 py-1.5 px-2 bg-[#252525] hover:bg-[#333333] border border-[#333333] hover:border-[#444444] rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {StorageService.getSystemMode() === 'production' ? (
+                    <>
+                      <ToggleRight className="h-4 w-4 text-emerald-400 shrink-0" />
+                      Mudar para Homologação
+                    </>
+                  ) : (
+                    <>
+                      <ToggleLeft className="h-4 w-4 text-slate-400 shrink-0" />
+                      Ativar Produção (Base Limpa)
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              id="btn-toggle-system-mode-collapsed"
+              onClick={() => {
+                const currentMode = StorageService.getSystemMode();
+                const nextMode = currentMode === 'simulation' ? 'production' : 'simulation';
+                StorageService.setSystemMode(nextMode);
+                window.location.reload();
+              }}
+              className="w-full flex items-center justify-center p-2 rounded-xl bg-[#1a1a1a] hover:bg-[#252525] border border-[#2a2a2a] text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title={StorageService.getSystemMode() === 'production' ? 'Modo Produção - Clique para Homologação' : 'Modo Homologação - Clique para Produção'}
+            >
+              {StorageService.getSystemMode() === 'production' ? (
+                <ToggleRight className="h-5 w-5 text-emerald-400 shrink-0" />
+              ) : (
+                <ToggleLeft className="h-5 w-5 text-[#FBBF3D] shrink-0" />
+              )}
+            </button>
           )}
 
           {/* Logout button */}

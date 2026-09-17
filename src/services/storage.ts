@@ -74,25 +74,75 @@ function setLocal<T>(key: string, value: T): void {
   }
 }
 
+const MODE_KEY = 'matchpoint_system_mode_v4';
+
 export const StorageService = {
-  // Reset all to initial state
+  getSystemMode: (): 'simulation' | 'production' => {
+    return getLocal<'simulation' | 'production'>(MODE_KEY, 'production');
+  },
+
+  setSystemMode: (mode: 'simulation' | 'production') => {
+    setLocal(MODE_KEY, mode);
+    // Purge existing data to force reload with the correct seed
+    localStorage.removeItem(STORAGE_KEYS.TENANTS);
+    localStorage.removeItem(STORAGE_KEYS.USERS);
+    localStorage.removeItem(STORAGE_KEYS.VETS);
+    localStorage.removeItem(STORAGE_KEYS.VISITS);
+    localStorage.removeItem(STORAGE_KEYS.VISIT_REPORTS);
+    localStorage.removeItem(STORAGE_KEYS.FOLLOW_UP_TASKS);
+    localStorage.removeItem(STORAGE_KEYS.INSTAGRAM_LEADS);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_TENANT_ID);
+    localStorage.removeItem(STORAGE_KEYS.IS_AUTHENTICATED);
+
+    if (mode === 'production') {
+      const defaultProdUser: User = {
+        id: 'user-admin',
+        tenant_id: null,
+        full_name: 'Administrador Match Point',
+        email: 'admin@matchpoint.com.br',
+        role: 'super_admin',
+        phone: '(27) 99273-5244',
+        is_active: true,
+        created_at: new Date().toISOString()
+      };
+      setLocal(STORAGE_KEYS.TENANTS, []);
+      setLocal(STORAGE_KEYS.USERS, [defaultProdUser]);
+      setLocal(STORAGE_KEYS.VETS, []);
+      setLocal(STORAGE_KEYS.VISITS, []);
+      setLocal(STORAGE_KEYS.VISIT_REPORTS, []);
+      setLocal(STORAGE_KEYS.FOLLOW_UP_TASKS, []);
+      setLocal(STORAGE_KEYS.INSTAGRAM_LEADS, []);
+      setLocal(STORAGE_KEYS.CURRENT_USER_ID, 'user-admin');
+      setLocal(STORAGE_KEYS.CURRENT_TENANT_ID, null);
+      setLocal(STORAGE_KEYS.IS_AUTHENTICATED, true);
+    } else {
+      setLocal(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
+      setLocal(STORAGE_KEYS.USERS, INITIAL_USERS);
+      setLocal(STORAGE_KEYS.VETS, INITIAL_VETS);
+      setLocal(STORAGE_KEYS.VISITS, INITIAL_VISITS);
+      setLocal(STORAGE_KEYS.VISIT_REPORTS, INITIAL_VISIT_REPORTS);
+      setLocal(STORAGE_KEYS.FOLLOW_UP_TASKS, INITIAL_FOLLOW_UP_TASKS);
+      setLocal(STORAGE_KEYS.INSTAGRAM_LEADS, INITIAL_INSTAGRAM_LEADS);
+      setLocal(STORAGE_KEYS.CURRENT_USER_ID, 'user-admin');
+      setLocal(STORAGE_KEYS.CURRENT_TENANT_ID, null);
+      setLocal(STORAGE_KEYS.IS_AUTHENTICATED, true);
+    }
+  },
+
+  // Reset all to initial state based on current mode
   resetAll: () => {
-    setLocal(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
-    setLocal(STORAGE_KEYS.USERS, INITIAL_USERS);
-    setLocal(STORAGE_KEYS.VETS, INITIAL_VETS);
-    setLocal(STORAGE_KEYS.VISITS, INITIAL_VISITS);
-    setLocal(STORAGE_KEYS.VISIT_REPORTS, INITIAL_VISIT_REPORTS);
-    setLocal(STORAGE_KEYS.FOLLOW_UP_TASKS, INITIAL_FOLLOW_UP_TASKS);
-    setLocal(STORAGE_KEYS.INSTAGRAM_LEADS, INITIAL_INSTAGRAM_LEADS);
-    setLocal(STORAGE_KEYS.CURRENT_USER_ID, 'user-admin');
-    setLocal(STORAGE_KEYS.CURRENT_TENANT_ID, null);
+    const mode = StorageService.getSystemMode();
+    StorageService.setSystemMode(mode);
   },
 
   // Tenants
   getTenants: (): Tenant[] => {
-    const stored = getLocal<Tenant[]>(STORAGE_KEYS.TENANTS, INITIAL_TENANTS);
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [] : INITIAL_TENANTS;
+    const stored = getLocal<Tenant[]>(STORAGE_KEYS.TENANTS, defaultInit);
     const existingIds = new Set(stored.map((t) => t.id));
-    const missing = INITIAL_TENANTS.filter((it) => !existingIds.has(it.id));
+    const missing = defaultInit.filter((it) => !existingIds.has(it.id));
     if (missing.length > 0) {
       const merged = [...stored, ...missing];
       setLocal(STORAGE_KEYS.TENANTS, merged);
@@ -147,9 +197,23 @@ export const StorageService = {
 
   // Users
   getUsers: (): User[] => {
-    const stored = getLocal<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [
+      {
+        id: 'user-admin',
+        tenant_id: null,
+        full_name: 'Administrador Match Point',
+        email: 'admin@matchpoint.com.br',
+        role: 'super_admin',
+        phone: '(27) 99273-5244',
+        is_active: true,
+        created_at: new Date().toISOString()
+      } as User
+    ] : INITIAL_USERS;
+
+    const stored = getLocal<User[]>(STORAGE_KEYS.USERS, defaultInit);
     const existingIds = new Set(stored.map((u) => u.id));
-    const missing = INITIAL_USERS.filter((iu) => !existingIds.has(iu.id));
+    const missing = defaultInit.filter((iu) => !existingIds.has(iu.id));
     if (missing.length > 0) {
       const merged = [...stored, ...missing];
       setLocal(STORAGE_KEYS.USERS, merged);
@@ -301,7 +365,11 @@ export const StorageService = {
   setCurrentTenantId: (id: string | null) => setLocal(STORAGE_KEYS.CURRENT_TENANT_ID, id),
 
   // Veterinarians
-  getVeterinarians: (): Veterinarian[] => getLocal<Veterinarian[]>(STORAGE_KEYS.VETS, INITIAL_VETS),
+  getVeterinarians: (): Veterinarian[] => {
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [] : INITIAL_VETS;
+    return getLocal<Veterinarian[]>(STORAGE_KEYS.VETS, defaultInit);
+  },
 
   addVeterinarian: (vet: Omit<Veterinarian, 'id' | 'created_at' | 'updated_at'>): Veterinarian => {
     const list = StorageService.getVeterinarians();
@@ -359,13 +427,19 @@ export const StorageService = {
   },
 
   // Visits
-  getVisits: (): Visit[] => getLocal<Visit[]>(STORAGE_KEYS.VISITS, INITIAL_VISITS),
+  getVisits: (): Visit[] => {
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [] : INITIAL_VISITS;
+    return getLocal<Visit[]>(STORAGE_KEYS.VISITS, defaultInit);
+  },
 
   // Visit Reports
   getVisitReports: (): VisitReport[] => {
-    const stored = getLocal<VisitReport[]>(STORAGE_KEYS.VISIT_REPORTS, INITIAL_VISIT_REPORTS);
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [] : INITIAL_VISIT_REPORTS;
+    const stored = getLocal<VisitReport[]>(STORAGE_KEYS.VISIT_REPORTS, defaultInit);
     const existingIds = new Set(stored.map((r) => r.id));
-    const missing = INITIAL_VISIT_REPORTS.filter((ir) => !existingIds.has(ir.id));
+    const missing = defaultInit.filter((ir) => !existingIds.has(ir.id));
     if (missing.length > 0) {
       const merged = [...stored, ...missing];
       setLocal(STORAGE_KEYS.VISIT_REPORTS, merged);
@@ -376,9 +450,11 @@ export const StorageService = {
 
   // Follow-up Tasks
   getFollowUpTasks: (): FollowUpTask[] => {
-    const stored = getLocal<FollowUpTask[]>(STORAGE_KEYS.FOLLOW_UP_TASKS, INITIAL_FOLLOW_UP_TASKS);
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [] : INITIAL_FOLLOW_UP_TASKS;
+    const stored = getLocal<FollowUpTask[]>(STORAGE_KEYS.FOLLOW_UP_TASKS, defaultInit);
     const existingIds = new Set(stored.map((t) => t.id));
-    const missing = INITIAL_FOLLOW_UP_TASKS.filter((it) => !existingIds.has(it.id));
+    const missing = defaultInit.filter((it) => !existingIds.has(it.id));
     if (missing.length > 0) {
       const merged = [...stored, ...missing];
       setLocal(STORAGE_KEYS.FOLLOW_UP_TASKS, merged);
@@ -388,7 +464,11 @@ export const StorageService = {
   },
 
   // Instagram Leads
-  getInstagramLeads: (): InstagramPostLead[] => getLocal<InstagramPostLead[]>(STORAGE_KEYS.INSTAGRAM_LEADS, INITIAL_INSTAGRAM_LEADS),
+  getInstagramLeads: (): InstagramPostLead[] => {
+    const isProd = StorageService.getSystemMode() === 'production';
+    const defaultInit = isProd ? [] : INITIAL_INSTAGRAM_LEADS;
+    return getLocal<InstagramPostLead[]>(STORAGE_KEYS.INSTAGRAM_LEADS, defaultInit);
+  },
 
   addInstagramLead: (lead: Omit<InstagramPostLead, 'id' | 'created_at'>): InstagramPostLead => {
     const list = StorageService.getInstagramLeads();

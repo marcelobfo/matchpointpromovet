@@ -18,13 +18,153 @@ import {
 
 export const ArchitectureModule: React.FC = () => {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'er' | 'ddl' | 'rls' | 'triggers' | 'adr'>('er');
+  const [activeSubTab, setActiveSubTab] = useState<'er' | 'ddl' | 'rls' | 'triggers' | 'adr' | 'migration'>('migration');
 
   const copyToClipboard = (text: string, sectionId: string) => {
     navigator.clipboard.writeText(text);
     setCopiedSection(sectionId);
     setTimeout(() => setCopiedSection(null), 2000);
   };
+
+  const SQL_MIGRATION_UPDATE = `-- ============================================================================
+-- SCRIPT DE ATUALIZAÇÃO SQL (MIGRAÇÃO) - MATCH POINT PROMOVE
+-- Atualizações:
+-- 1. View Otimizada: Última Visita e Promotor Responsável por Veterinário
+-- 2. Trigger com Atribuição Automática ao Promotor Responsável (D+7, D+14, Crítico)
+-- 3. Políticas RLS: Sigilo Estrito Entre Promotores e Isolamento por Contratante
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 1. VIEW: Última Visita e Promotor Responsável por Médico-Veterinário
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW public.v_veterinarians_with_last_visit AS
+SELECT 
+    v.id AS veterinarian_id,
+    v.full_name AS veterinarian_name,
+    v.crmv,
+    v.specialty,
+    v.whatsapp,
+    v.workplace_name,
+    v.neighborhood,
+    v.city,
+    lv.id AS last_visit_id,
+    lv.visit_date AS last_visit_date,
+    lv.check_in_timestamp AS last_visit_timestamp,
+    lv.promoter_id AS last_promoter_id,
+    COALESCE(u.full_name, 'Promotor Match Point') AS last_promoter_name,
+    u.phone AS last_promoter_phone
+FROM public.veterinarians v
+LEFT JOIN LATERAL (
+    SELECT 
+        vis.id,
+        vis.visit_date,
+        vis.check_in_timestamp,
+        vis.promoter_id
+    FROM public.visits vis
+    WHERE vis.veterinarian_id = v.id
+    ORDER BY vis.visit_date DESC, vis.check_in_timestamp DESC
+    LIMIT 1
+) lv ON true
+LEFT JOIN public.users u ON u.id = lv.promoter_id;
+
+GRANT SELECT ON public.v_veterinarians_with_last_visit TO authenticated, anon;
+
+-- ----------------------------------------------------------------------------
+-- 2. TRIGGER: Atribuição Automática ao Promotor Responsável (visits.promoter_id)
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.fn_trigger_generate_follow_up_tasks()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_vet_id TEXT;
+    v_visit_date DATE;
+    v_promoter_id TEXT;
+BEGIN
+    SELECT veterinarian_id, visit_date::DATE, promoter_id 
+    INTO v_vet_id, v_visit_date, v_promoter_id
+    FROM public.visits
+    WHERE id = NEW.visit_id;
+
+    -- 1. Agendar 1º Follow-up (D+7) para o promotor responsável da visita
+    INSERT INTO public.follow_up_tasks (
+        id, visit_report_id, tenant_id, veterinarian_id, assigned_to,
+        action_type, due_date, description, status
+    ) VALUES (
+        'task-' || substr(md5(random()::text), 1, 8),
+        NEW.id, NEW.tenant_id, v_vet_id, v_promoter_id,
+        'first_contact_7d', (v_visit_date + INTERVAL '7 days')::DATE::TEXT,
+        '1º Follow-up D+7 pós-visita para reforço do contratante', 'pending'
+    );
+
+    -- 2. Agendar 2º Follow-up (D+14) para o mesmo promotor
+    INSERT INTO public.follow_up_tasks (
+        id, visit_report_id, tenant_id, veterinarian_id, assigned_to,
+        action_type, due_date, description, status
+    ) VALUES (
+        'task-' || substr(md5(random()::text), 1, 8),
+        NEW.id, NEW.tenant_id, v_vet_id, v_promoter_id,
+        'second_contact_14d', (v_visit_date + INTERVAL '14 days')::DATE::TEXT,
+        '2º Follow-up D+14 pós-visita e acompanhamento de adesão', 'pending'
+    );
+
+    -- 3. Resolução Imediata (D+0) para Crítico / Reclamação
+    IF NEW.critical_action_needed = TRUE OR NEW.sentiment = 'complaint' THEN
+        INSERT INTO public.follow_up_tasks (
+            id, visit_report_id, tenant_id, veterinarian_id, assigned_to,
+            action_type, due_date, description, status
+        ) VALUES (
+            'task-' || substr(md5(random()::text), 1, 8),
+            NEW.id, NEW.tenant_id, v_vet_id, v_promoter_id,
+            'critical_resolution', CURRENT_DATE::TEXT,
+            'ATENÇÃO: Resolução urgente de apontamento crítico/reclamação', 'pending'
+        );
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_after_visit_report_insert ON public.visit_reports;
+CREATE TRIGGER trg_after_visit_report_insert
+AFTER INSERT ON public.visit_reports
+FOR EACH ROW EXECUTE FUNCTION public.fn_trigger_generate_follow_up_tasks();
+
+-- ----------------------------------------------------------------------------
+-- 3. POLÍTICAS RLS: Sigilo Rigoroso Entre Promotores e Contratantes
+-- ----------------------------------------------------------------------------
+ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.visit_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.follow_up_tasks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Promoters see only their own visits" ON public.visits;
+CREATE POLICY "Promoters see only their own visits"
+ON public.visits FOR ALL TO authenticated
+USING (
+    promoter_id = auth.uid()::TEXT
+    OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid()::TEXT AND role = 'super_admin')
+);
+
+DROP POLICY IF EXISTS "Promoters see only their own reports" ON public.visit_reports;
+CREATE POLICY "Promoters see only their own reports"
+ON public.visit_reports FOR ALL TO authenticated
+USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid()::TEXT AND role = 'super_admin')
+    OR EXISTS (
+        SELECT 1 FROM public.visits 
+        WHERE public.visits.id = public.visit_reports.visit_id 
+        AND public.visits.promoter_id = auth.uid()::TEXT
+    )
+    OR tenant_id = (SELECT tenant_id FROM public.users WHERE id = auth.uid()::TEXT)
+);
+
+DROP POLICY IF EXISTS "Promoters see only their own tasks" ON public.follow_up_tasks;
+CREATE POLICY "Promoters see only their own tasks"
+ON public.follow_up_tasks FOR ALL TO authenticated
+USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid()::TEXT AND role = 'super_admin')
+    OR assigned_to = auth.uid()::TEXT
+    OR assigned_to = (SELECT full_name FROM public.users WHERE id = auth.uid()::TEXT)
+    OR tenant_id = (SELECT tenant_id FROM public.users WHERE id = auth.uid()::TEXT)
+);`;
 
   const SQL_DDL_FULL = `-- ============================================================================
 -- Match Point Promove - Arquitetura de Banco de Dados PostgreSQL & Multi-Tenant
@@ -336,6 +476,19 @@ EXECUTE FUNCTION fn_trigger_generate_follow_up_tasks();`;
         </button>
 
         <button
+          id="subtab-migration"
+          onClick={() => setActiveSubTab('migration')}
+          className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeSubTab === 'migration'
+              ? 'bg-[#FF530D] text-white shadow-md shadow-[#FF530D]/25'
+              : 'bg-[#FF530D]/10 text-[#FF530D] hover:bg-[#FF530D]/20 border border-[#FF530D]/30'
+          }`}
+        >
+          <Sparkles className="h-4 w-4 text-[#FBBF3D]" />
+          Atualização SQL (Migração 2026)
+        </button>
+
+        <button
           id="subtab-adr"
           onClick={() => setActiveSubTab('adr')}
           className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -605,6 +758,83 @@ EXECUTE FUNCTION fn_trigger_generate_follow_up_tasks();`;
               <br />
               <strong>Benefício:</strong> Elimina retrabalho de digitação em campo e padroniza o histórico de relacionamento e aniversários.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 6: MIGRATION & RECENT SQL UPDATES */}
+      {activeSubTab === 'migration' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-6 border border-[#E8D9C8] shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E8D9C8] pb-4">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF530D] bg-[#FF530D]/10 px-2 py-0.5 rounded">
+                  Patch de Banco de Dados • Setembro 2026
+                </span>
+                <h3 className="text-lg font-black text-[#111111] mt-1 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-[#FF530D]" />
+                  Atualização SQL: Sigilo de Promotores & Último Visitante
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Script de migração completo pronto para execução no <strong>Supabase SQL Editor</strong> ou <strong>PostgreSQL 16</strong>.
+                </p>
+              </div>
+
+              <button
+                id="btn-copy-migration-sql"
+                onClick={() => copyToClipboard(SQL_MIGRATION_UPDATE, 'migration')}
+                className="bg-[#FF530D] hover:bg-[#FF530D]/90 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md shadow-[#FF530D]/25 cursor-pointer shrink-0"
+              >
+                {copiedSection === 'migration' ? <Check className="h-4 w-4 text-white" /> : <Copy className="h-4 w-4" />}
+                {copiedSection === 'migration' ? 'SQL Copiado para Área de Transferência!' : 'Copiar Script SQL Completo'}
+              </button>
+            </div>
+
+            {/* Impact Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <div className="bg-[#FAF5EF] p-4 rounded-xl border border-[#E8D9C8] space-y-1.5">
+                <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 text-[#FF530D]" />
+                  1. View Lateral de Última Visita
+                </span>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Cria <code className="font-mono text-[#111111] font-semibold">v_veterinarians_with_last_visit</code> utilizando <code className="font-mono font-semibold">LATERAL JOIN</code> para identificar em alta performance quem visitou cada médico por último, sem vazar notas privadas de outros promotores.
+                </p>
+              </div>
+
+              <div className="bg-[#FAF5EF] p-4 rounded-xl border border-[#E8D9C8] space-y-1.5">
+                <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                  <Zap className="h-4 w-4 text-[#FBBF3D]" />
+                  2. Trigger com Atribuição Direta
+                </span>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Atualiza <code className="font-mono text-[#111111] font-semibold">fn_trigger_generate_follow_up_tasks()</code> para gravar <code className="font-mono font-semibold">assigned_to = visits.promoter_id</code>, garantindo que réguas D+7 e D+14 fiquem atribuídas exclusivamente a quem visitou.
+                </p>
+              </div>
+
+              <div className="bg-[#FAF5EF] p-4 rounded-xl border border-[#E8D9C8] space-y-1.5">
+                <span className="text-xs font-black text-[#111111] flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  3. RLS de Isolamento Estrito
+                </span>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Políticas em nível de linha no PostgreSQL impedindo que promotores consultem ou alterem visitas, relatórios e tarefas de terceiros, preservando acesso pleno apenas para o Super Admin.
+                </p>
+              </div>
+            </div>
+
+            {/* Code Block */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="font-mono text-slate-600">Arquivo gerado no repositório: /supabase_migration_update.sql</span>
+                <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Pronto para Execução
+                </span>
+              </div>
+              <pre className="text-xs font-mono text-[#FDF2E7]/90 overflow-x-auto p-4 bg-[#0a0a0a] rounded-xl border border-[#222222] leading-relaxed max-h-[500px]">
+                {SQL_MIGRATION_UPDATE}
+              </pre>
+            </div>
           </div>
         </div>
       )}
