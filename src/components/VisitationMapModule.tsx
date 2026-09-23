@@ -87,7 +87,7 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Script loading
-  const apiKey = 'AIzaSyDUWj5ZejLUQlEpSfTMf5Gy0GWaZGbE_l0';
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
   useEffect(() => {
     const scriptId = 'google-maps-script';
