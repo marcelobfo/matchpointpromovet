@@ -16,6 +16,8 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { AuthScreen } from './components/AuthScreen';
 import { UserManualModule } from './components/UserManualModule';
+import { VisitationMapModule } from './components/VisitationMapModule';
+import { GiftsModule } from './components/GiftsModule';
 import {
   Tenant,
   User,
@@ -273,6 +275,15 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'map' && (currentUser.role === 'super_admin' || currentUser.role === 'promoter') && (
+            <VisitationMapModule
+              visits={visits}
+              vets={vets}
+              tenants={tenants}
+              promoters={promoterUsers}
+            />
+          )}
+
           {activeTab === 'tenant-portal' && (
             <TenantPortal
               tenants={tenants}
@@ -319,6 +330,10 @@ export default function App() {
 
           {activeTab === 'manual' && (
             <UserManualModule currentUserRole={currentUser.role} />
+          )}
+
+          {activeTab === 'gifts' && (currentUser.role === 'super_admin' || currentUser.role === 'promoter') && (
+            <GiftsModule vets={vets} users={users} />
           )}
 
           {/* SENSITIVE MODULES: ONLY SUPER ADMIN (MATCH POINT GESTOR MASTER) */}

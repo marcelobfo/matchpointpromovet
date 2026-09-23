@@ -32,11 +32,13 @@ import {
   Plus,
   Cake,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Gift as GiftIcon
 } from 'lucide-react';
-import { Veterinarian, Tenant, User, FeedbackSentiment, Visit, VisitReport, UserRole } from '../types';
+import { Veterinarian, Tenant, User, FeedbackSentiment, Visit, VisitReport, UserRole, Gift } from '../types';
 import { NewVetModal } from './NewVetModal';
 import { VetProfileDossierModal } from './VetProfileDossierModal';
+import { StorageService } from '../services/storage';
 
 interface FieldModuleProps {
   vets: Veterinarian[];
@@ -120,6 +122,10 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   // Internal Agency Confidential Notes (Match Point & Promoter ONLY)
   const [internalAgencyNotes, setInternalAgencyNotes] = useState('');
 
+  // Gift distribution state during visit checkout
+  const [selectedGiftId, setSelectedGiftId] = useState('');
+  const [giftQuantity, setGiftQuantity] = useState(1);
+
   const [isGpsActive, setIsGpsActive] = useState(true);
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>({
     lat: -23.565,
@@ -130,7 +136,6 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   const [visitPhotos, setVisitPhotos] = useState<string[]>([]);
   const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
   const [activePhotoLightbox, setActivePhotoLightbox] = useState<string | null>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Selected Tenants represented in this single visit (up to 3)
   const [selectedTenantIds, setSelectedTenantIds] = useState<string[]>(() => {
@@ -221,8 +226,9 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
         if (f) processPhotoFile(f);
       }
     }
-    if (photoInputRef.current) {
-      photoInputRef.current.value = '';
+    const el = document.getElementById('input-visit-photos-file') as HTMLInputElement | null;
+    if (el) {
+      el.value = '';
     }
   };
 
@@ -358,6 +364,25 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
       critical_action_needed: tenantReportsData[tId].critical_action_needed
     }));
 
+    // Register gift distribution if any is selected during check-out
+    if (selectedGiftId && selectedVet) {
+      const allGifts = StorageService.getGifts();
+      const gift = allGifts.find((g) => g.id === selectedGiftId);
+      const promoter = promoters.find((u) => u.id === selectedPromoterId);
+      if (gift) {
+        StorageService.addGiftLog({
+          gift_id: selectedGiftId,
+          gift_name: gift.name,
+          veterinarian_id: selectedVet.id,
+          veterinarian_name: selectedVet.full_name,
+          promoter_id: selectedPromoterId,
+          promoter_name: promoter?.full_name || 'Promotor de Campo',
+          quantity: giftQuantity,
+          notes: `Entregue em visita registrada de promotoria de campo.`
+        });
+      }
+    }
+
     onSaveVisit({
       promoter_id: selectedPromoterId,
       veterinarian_id: selectedVet.id,
@@ -381,6 +406,8 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
     setGeneralNotes('');
     setInternalAgencyNotes('');
     setVisitPhotos([]);
+    setSelectedGiftId('');
+    setGiftQuantity(1);
     setTenantReportsData((prev) => {
       const reset: any = {};
       Object.keys(prev).forEach((k) => {
@@ -925,6 +952,50 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                   className="w-full text-xs p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
                 />
               </div>
+
+              {/* GIFT / MIMO DISTRIBUTION SECTION */}
+              <div className="bg-[#FDF2E7]/40 p-4 rounded-2xl border border-[#E8D9C8] space-y-3">
+                <div className="flex items-center gap-2">
+                  <GiftIcon className="h-4.5 w-4.5 text-[#FF530D]" />
+                  <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                    Distribuição de Brinde ou Amostra 🎁
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
+                      Selecione o Brinde Entregue
+                    </label>
+                    <select
+                      value={selectedGiftId}
+                      onChange={(e) => setSelectedGiftId(e.target.value)}
+                      className="w-full text-xs font-semibold p-2 bg-white border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none cursor-pointer"
+                    >
+                      <option value="">-- Nenhum brinde entregue --</option>
+                      {StorageService.getGifts().map((g) => (
+                        <option key={g.id} value={g.id} disabled={g.stock <= 0}>
+                          {g.name} ({g.stock} disponíveis)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
+                      Quantidade Entregue
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      disabled={!selectedGiftId}
+                      value={giftQuantity}
+                      onChange={(e) => setGiftQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full text-xs font-semibold p-2 bg-white border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* CONFIDENTIAL INTERNAL MATCH POINT & PROMOTER NOTES */}
@@ -982,7 +1053,10 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                 }}
                 onDragLeave={() => setIsDraggingPhotos(false)}
                 onDrop={handlePhotoDrop}
-                onClick={() => photoInputRef.current?.click()}
+                onClick={() => {
+                  const el = document.getElementById('input-visit-photos-file') as HTMLInputElement | null;
+                  if (el) el.click();
+                }}
                 className={`border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer ${
                   isDraggingPhotos
                     ? 'border-[#FF530D] bg-[#FF530D]/10'
@@ -990,12 +1064,12 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                 }`}
               >
                 <input
-                  ref={photoInputRef}
                   id="input-visit-photos-file"
                   type="file"
                   accept="image/*"
                   multiple
                   capture="environment"
+                  onClick={(e) => e.stopPropagation()}
                   onChange={handlePhotosChange}
                   className="hidden"
                 />

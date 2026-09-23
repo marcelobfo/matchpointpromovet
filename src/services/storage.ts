@@ -6,7 +6,9 @@ import {
   VisitReport,
   FollowUpTask,
   InstagramPostLead,
-  FeedbackSentiment
+  FeedbackSentiment,
+  Gift,
+  GiftLog
 } from '../types';
 import {
   INITIAL_TENANTS,
@@ -30,7 +32,11 @@ const STORAGE_KEYS = {
   CURRENT_USER_ID: 'matchpoint_prod_current_user_id_v4',
   CURRENT_TENANT_ID: 'matchpoint_prod_current_tenant_id_v4',
   IS_AUTHENTICATED: 'matchpoint_prod_is_authenticated_v4',
-  CUSTOM_PASSWORDS: 'matchpoint_prod_custom_passwords_v4'
+  CUSTOM_PASSWORDS: 'matchpoint_prod_custom_passwords_v4',
+  CONTRACT_TEMPLATE: 'matchpoint_prod_contract_template_v4',
+  ZAPSIGN_API_KEY: 'matchpoint_prod_zapsign_api_key_v4',
+  GIFTS: 'matchpoint_prod_gifts_v4',
+  GIFT_LOGS: 'matchpoint_prod_gift_logs_v4'
 };
 
 // Purge old homologation storage keys if any
@@ -75,6 +81,19 @@ function setLocal<T>(key: string, value: T): void {
 }
 
 const MODE_KEY = 'matchpoint_system_mode_v4';
+
+export const replaceContractPlaceholders = (template: string, tenant: any): string => {
+  const dateStr = new Date().toLocaleDateString('pt-BR');
+  return template
+    .replace(/\{\{company_name\}\}/g, tenant.company_name || '—')
+    .replace(/\{\{trade_name\}\}/g, tenant.trade_name || '—')
+    .replace(/\{\{cnpj\}\}/g, tenant.cnpj || '—')
+    .replace(/\{\{city\}\}/g, tenant.city || 'São Paulo')
+    .replace(/\{\{state\}\}/g, tenant.state || 'SP')
+    .replace(/\{\{technical_responsible\}\}/g, tenant.technical_responsible || 'Não informado')
+    .replace(/\{\{technical_crmv\}\}/g, tenant.technical_crmv || '—')
+    .replace(/\{\{date\}\}/g, dateStr);
+};
 
 export const StorageService = {
   getSystemMode: (): 'simulation' | 'production' => {
@@ -140,7 +159,56 @@ export const StorageService = {
   getTenants: (): Tenant[] => {
     const isProd = StorageService.getSystemMode() === 'production';
     const defaultInit = isProd ? [] : INITIAL_TENANTS;
-    const stored = getLocal<Tenant[]>(STORAGE_KEYS.TENANTS, defaultInit);
+    let stored = getLocal<Tenant[]>(STORAGE_KEYS.TENANTS, defaultInit);
+    
+    // Auto-initialize contract fields for any loaded tenants that don't have them
+    let hasChanges = false;
+    stored = stored.map((t, idx) => {
+      if (!t.contract_status) {
+        hasChanges = true;
+        const mockToken = `zapsign-mock-${t.id}`;
+        const template = `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE PROMOTORIA E MARKETING VETERINÁRIO
+
+Contratante: ${t.company_name}
+Nome Fantasia: ${t.trade_name}
+CNPJ: ${t.cnpj || '—'}
+Cidade/Estado: ${t.city || 'São Paulo'} - ${t.state || 'SP'}
+Responsável Técnico: ${t.technical_responsible || 'Não informado'} ${t.technical_crmv ? `(${t.technical_crmv})` : ''}
+
+Pelo presente instrumento, as partes acima qualificadas acordam a prestação de serviços de promotoria técnica veterinária para a marca ${t.trade_name} nos termos e condições estabelecidos na proposta comercial da MATCH POINT MARKETING VETERINÁRIO LTDA.
+
+A Contratada compromete-se a:
+1. Realizar visitas periódicas a clínicas veterinárias para divulgação técnica.
+2. Fornecer relatórios de inteligência de mercado estruturados.
+3. Disponibilizar portal de acompanhamento de campo em tempo real.
+
+O presente contrato passa a vigorar a partir da data de sua assinatura digital.
+
+Cidade de Assinatura: ${t.city || 'São Paulo'} / ${t.state || 'SP'}.
+Data: ${new Date().toLocaleDateString('pt-BR')}.
+
+____________________________________________
+Assinatura do Contratante (Representante Legal)`;
+        
+        // Give the first demo tenant a signed status, and others pending!
+        const status = idx === 0 ? 'signed' : 'pending';
+        return {
+          ...t,
+          contract_status: status,
+          contract_token: mockToken,
+          contract_sign_url: `https://sandbox.app.zapsign.com.br/verificar/${mockToken}`,
+          contract_text: template,
+          contract_signed_at: status === 'signed' ? new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString() : undefined,
+          contract_pdf_url: status === 'signed' ? `https://sandbox.api.zapsign.com.br/v1/docs/${mockToken}/signed.pdf` : undefined
+        };
+      }
+      return t;
+    });
+
+    if (hasChanges) {
+      setLocal(STORAGE_KEYS.TENANTS, stored);
+    }
+
     const existingIds = new Set(stored.map((t) => t.id));
     const missing = defaultInit.filter((it) => !existingIds.has(it.id));
     if (missing.length > 0) {
@@ -157,9 +225,17 @@ export const StorageService = {
 
   addTenant: (tenant: Omit<Tenant, 'id' | 'created_at' | 'updated_at'>): Tenant => {
     const list = StorageService.getTenants();
+    const mockToken = `zapsign-${Math.random().toString(36).substr(2, 9)}`;
+    const template = StorageService.getContractTemplate();
+    const contractText = replaceContractPlaceholders(template, tenant);
+    
     const newTenant: Tenant = {
       ...tenant,
       id: `tenant-${Date.now()}`,
+      contract_status: 'pending',
+      contract_token: mockToken,
+      contract_sign_url: `https://sandbox.app.zapsign.com.br/verificar/${mockToken}`,
+      contract_text: contractText,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -724,5 +800,89 @@ export const StorageService = {
       tasks: tenantTasks,
       instagramLeads
     };
+  },
+
+  // Contract Management & ZapSign Integrations
+  getContractTemplate: (): string => {
+    const defaultTemplate = `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE PROMOTORIA E MARKETING VETERINÁRIO
+
+Contratante: {{company_name}}
+Nome Fantasia: {{trade_name}}
+CNPJ: {{cnpj}}
+Cidade/Estado: {{city}} - {{state}}
+Responsável Técnico: {{technical_responsible}} (CRMV: {{technical_crmv}})
+
+Pelo presente instrumento, as partes acima qualificadas acordam a prestação de serviços de promotoria técnica veterinária para a marca {{trade_name}} nos termos e condições estabelecidos na proposta comercial da MATCH POINT MARKETING VETERINÁRIO LTDA.
+
+A Contratada compromete-se a:
+1. Realizar visitas periódicas a clínicas veterinárias para divulgação técnica.
+2. Fornecer relatórios de inteligência de mercado estruturados.
+3. Disponibilizar portal de acompanhamento de campo em tempo real.
+
+O presente contrato passa a vigorar a partir da data de sua assinatura digital.
+
+Cidade de Assinatura: {{city}} / {{state}}.
+Data: {{date}}.
+
+____________________________________________
+Assinatura do Contratante (Representante Legal)`;
+    return getLocal<string>(STORAGE_KEYS.CONTRACT_TEMPLATE, defaultTemplate);
+  },
+
+  saveContractTemplate: (text: string) => {
+    setLocal(STORAGE_KEYS.CONTRACT_TEMPLATE, text);
+  },
+
+  getZapSignApiKey: (): string => {
+    return getLocal<string>(STORAGE_KEYS.ZAPSIGN_API_KEY, '');
+  },
+
+  saveZapSignApiKey: (key: string) => {
+    setLocal(STORAGE_KEYS.ZAPSIGN_API_KEY, key);
+  },
+
+  getGifts: (): Gift[] => {
+    const defaultGifts: Gift[] = [
+      { id: 'gift-1', name: 'Caneta Executiva Match Point', description: 'Caneta esferográfica de metal com estojo personalizado.', stock: 150, type: 'institucional' },
+      { id: 'gift-2', name: 'Caneca Térmica Inox', description: 'Caneca térmica com gravação a laser, ideal para o dia a dia na clínica.', stock: 45, type: 'fidelidade' },
+      { id: 'gift-3', name: 'Bloco de Notas & Moleskine', description: 'Caderno de notas em couro sintético com pauta e fita marcadora.', stock: 80, type: 'campanha' },
+      { id: 'gift-4', name: 'Fita Métrica de Bolso', description: 'Fita métrica anatômica útil para medição rápida de animais de pequeno porte.', stock: 120, type: 'outro' }
+    ];
+    return getLocal<Gift[]>(STORAGE_KEYS.GIFTS, defaultGifts);
+  },
+
+  saveGifts: (gifts: Gift[]): void => {
+    setLocal(STORAGE_KEYS.GIFTS, gifts);
+  },
+
+  getGiftLogs: (): GiftLog[] => {
+    return getLocal<GiftLog[]>(STORAGE_KEYS.GIFT_LOGS, []);
+  },
+
+  saveGiftLogs: (logs: GiftLog[]): void => {
+    setLocal(STORAGE_KEYS.GIFT_LOGS, logs);
+  },
+
+  addGiftLog: (log: Omit<GiftLog, 'id' | 'distributed_at'>): GiftLog => {
+    const logs = StorageService.getGiftLogs();
+    const gifts = StorageService.getGifts();
+    
+    // Decrement from stock
+    const giftIndex = gifts.findIndex((g) => g.id === log.gift_id);
+    if (giftIndex !== -1 && gifts[giftIndex].stock >= log.quantity) {
+      gifts[giftIndex].stock -= log.quantity;
+      StorageService.saveGifts(gifts);
+    }
+
+    const newLog: GiftLog = {
+      ...log,
+      id: `giftlog-${Date.now()}`,
+      distributed_at: new Date().toISOString()
+    };
+    logs.unshift(newLog);
+    StorageService.saveGiftLogs(logs);
+    
+    SupabaseService.autoSyncEntity('gift_logs', newLog);
+    return newLog;
   }
 };

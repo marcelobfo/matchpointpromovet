@@ -32,10 +32,13 @@ import {
   Activity,
   Layers,
   Cake,
-  Send
+  Send,
+  PenTool,
+  Download
 } from 'lucide-react';
 import { Tenant, Veterinarian, Visit, VisitReport, FollowUpTask, FeedbackSentiment, UserRole } from '../types';
 import { StorageService } from '../services/storage';
+import { ZapSignSignatureModal } from './ZapSignSignatureModal';
 
 interface TenantPortalProps {
   tenants: Tenant[];
@@ -70,6 +73,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState(false);
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
 
   // If no specific tenant is selected, pick the first one by default for demonstration of RLS
   const activeTenantId = currentTenantId || tenants[0]?.id || 'tenant-mova';
@@ -146,6 +150,24 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
     (r) => r.sentiment === 'complaint' || r.critical_action_needed
   ).length;
   const positiveRatio = totalReports > 0 ? Math.round((positiveCount / totalReports) * 100) : 0;
+
+  // Count visits for this tenant in the current month
+  const currentMonthVisitsCount = (() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    
+    // Filter the reports for this tenant that belong to this month
+    return tenantReports.filter((r) => {
+      const visit = tenantVisitMap.get(r.visit_id);
+      if (!visit || !visit.visit_date) return false;
+      const vDate = new Date(visit.visit_date + 'T12:00:00Z');
+      return vDate.getFullYear() === currentYear && vDate.getMonth() === currentMonth;
+    }).length;
+  })();
+
+  const contractedVisits = activeTenant?.contracted_visits_monthly || 30;
+  const visitPercentage = Math.round((currentMonthVisitsCount / contractedVisits) * 100);
 
   // Filtered List
   const filteredReports = tenantReports.filter((rep) => {
@@ -276,6 +298,33 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
         </div>
       </div>
 
+      {/* Contract Pending Notification */}
+      {activeTenant && (activeTenant.contract_status === 'pending' || !activeTenant.contract_status) && (
+        <div className="bg-gradient-to-r from-amber-50 to-[#FDF2E7] border-2 border-amber-300 rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-4 text-left">
+            <div className="h-12 w-12 rounded-2xl bg-amber-100 flex items-center justify-center text-[#FF530D] border border-amber-200 shrink-0">
+              <FileText className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-black text-[#111111] text-sm sm:text-base leading-tight">
+                Contrato de Prestação de Serviços Pendente 📝
+              </h4>
+              <p className="text-xs text-slate-600 font-semibold leading-relaxed max-w-2xl">
+                O contrato de representação e parceria de sua marca está aguardando assinatura eletrônica. Complete a assinatura digital agora via ZapSign para formalizar o trabalho técnico de promotoria de campo.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSignatureModalOpen(true)}
+            className="w-full md:w-auto px-5 py-3 bg-[#FF530D] hover:bg-[#E04505] text-white rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 shrink-0 cursor-pointer"
+          >
+            <PenTool className="h-4 w-4" />
+            <span>Assinar Contrato Online</span>
+          </button>
+        </div>
+      )}
+
       {profileSuccessMsg && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 animate-fadeIn">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
@@ -290,13 +339,41 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
         <div className="space-y-6">
           {/* KPI Cards Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Visits for this brand */}
+            {/* Total Visits vs Contracted Package */}
+            <div className="bg-white p-5 rounded-2xl border border-[#E8D9C8] shadow-xs flex flex-col justify-between space-y-2">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Visitas do Mês Atual
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <div className="text-3xl font-black text-[#111111]">{currentMonthVisitsCount}</div>
+                  <div className="text-xs font-bold text-slate-500">/ {contractedVisits} contratadas</div>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-700">
+                  <span>Progresso do Pacote</span>
+                  <span style={{ color: activeTenant?.color_theme || '#FF530D' }}>{visitPercentage}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(visitPercentage, 100)}%`,
+                      backgroundColor: activeTenant?.color_theme || '#FF530D'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Total Accumulative Visits */}
             <div className="bg-white p-5 rounded-2xl border border-[#E8D9C8] shadow-xs space-y-1">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Abordagens Realizadas
+                Histórico Acumulado
               </span>
               <div className="text-3xl font-black text-[#111111]">{totalReports}</div>
-              <p className="text-xs text-slate-500">Visitas exclusivas a veterinários</p>
+              <p className="text-xs text-slate-500">Abordagens totais realizadas</p>
             </div>
 
             {/* Positive Sentiment */}
@@ -552,10 +629,8 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                       {/* Footer & Direct Contact Actions */}
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                         <div className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                          <span>
-                            Visita: {visit?.visit_date ? new Date(visit.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR') : 'Hoje'}
-                          </span>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                          <span>Visita Concluída</span>
                         </div>
 
                         <div className="flex items-center gap-1.5">
@@ -689,6 +764,94 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                     </div>
                     <div className="text-[11px] text-emerald-700 font-medium">
                       Canal VIP direto com coordenador de imagem
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contrato de Prestação de Serviços Widget */}
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E8D9C8] shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-10 w-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 text-sm sm:text-base">
+                          Contrato Digital (ZapSign)
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">
+                          Validade Jurídica Integrada • MP 2.200-2
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500">Status do Contrato:</span>
+                      {activeTenant?.contract_status === 'signed' ? (
+                        <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Assinado</span>
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                          <span>Pendente de Assinatura</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
+                    <div className="space-y-1.5">
+                      <div>
+                        <strong className="text-slate-500 text-[10px] uppercase font-bold block">Documento:</strong>
+                        <span className="text-slate-800 font-bold">Contrato de Prestação de Serviços de Promotoria Técnica</span>
+                      </div>
+                      <div>
+                        <strong className="text-slate-500 text-[10px] uppercase font-bold block">Token de Identificação:</strong>
+                        <span className="text-slate-700 font-mono text-xs">{activeTenant?.contract_token || 'Gerando...'}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 md:border-l md:border-slate-100 md:pl-4">
+                      {activeTenant?.contract_status === 'signed' ? (
+                        <>
+                          <div>
+                            <strong className="text-slate-500 text-[10px] uppercase font-bold block">Data de Assinatura:</strong>
+                            <span className="text-[#111111] font-bold">
+                              {activeTenant.contract_signed_at ? new Date(activeTenant.contract_signed_at).toLocaleString('pt-BR') : '—'}
+                            </span>
+                          </div>
+                          <div className="pt-1">
+                            <a
+                              href={activeTenant.contract_pdf_url || '#'}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black inline-flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              <span>Baixar PDF Assinado (ZapSign)</span>
+                            </a>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <strong className="text-slate-500 text-[10px] uppercase font-bold block">Pendência:</strong>
+                            <span className="text-rose-600 font-bold">Aguardando assinatura do representante legal.</span>
+                          </div>
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setIsSignatureModalOpen(true)}
+                              className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-black inline-flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+                            >
+                              <PenTool className="h-3.5 w-3.5" />
+                              <span>Assinar Digitalmente Agora</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1258,6 +1421,21 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ZapSign Signature Simulator Modal */}
+      {activeTenant && (
+        <ZapSignSignatureModal
+          isOpen={isSignatureModalOpen}
+          onClose={() => setIsSignatureModalOpen(false)}
+          tenant={activeTenant}
+          onSigned={() => {
+            setIsSignatureModalOpen(false);
+            if (onTenantUpdated) {
+              onTenantUpdated();
+            }
+          }}
+        />
       )}
     </div>
   );

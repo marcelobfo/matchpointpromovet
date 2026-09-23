@@ -43,7 +43,6 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
   const [birthDate, setBirthDate] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [workplaceName, setWorkplaceName] = useState('');
   const [workplaceType, setWorkplaceType] = useState<Veterinarian['workplace_type']>('Clínica Própria');
@@ -212,7 +211,10 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
                     />
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => {
+                        const el = document.getElementById('input-vet-avatar-file') as HTMLInputElement | null;
+                        if (el) el.click();
+                      }}
                       className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px] font-bold cursor-pointer"
                     >
                       Alterar
@@ -220,7 +222,10 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
                   </div>
                 ) : (
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      const el = document.getElementById('input-vet-avatar-file') as HTMLInputElement | null;
+                      if (el) el.click();
+                    }}
                     className="h-20 w-20 rounded-2xl border-2 border-dashed border-slate-300 hover:border-[#FF530D] bg-white flex flex-col items-center justify-center text-slate-400 hover:text-[#FF530D] transition-colors cursor-pointer"
                   >
                     <ImageIcon className="h-7 w-7 mb-0.5" />
@@ -235,7 +240,10 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    const el = document.getElementById('input-vet-avatar-file') as HTMLInputElement | null;
+                    if (el) el.click();
+                  }}
                   className={`border-2 border-dashed rounded-xl p-3 text-center transition-all cursor-pointer ${
                     isDragging
                       ? 'border-[#FF530D] bg-[#FF530D]/10'
@@ -243,11 +251,11 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
                   }`}
                 >
                   <input
-                    ref={fileInputRef}
                     id="input-vet-avatar-file"
                     type="file"
                     accept="image/*"
                     capture="user"
+                    onClick={(e) => e.stopPropagation()}
                     onChange={handleFileChange}
                     className="hidden"
                   />

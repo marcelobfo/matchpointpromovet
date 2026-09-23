@@ -321,7 +321,9 @@ export const SupabaseService = {
       'visits',
       'visit_reports',
       'follow_up_tasks',
-      'instagram_leads'
+      'instagram_leads',
+      'gifts',
+      'gift_logs'
     ];
 
     const client = getClients().admin;
@@ -359,17 +361,17 @@ export const SupabaseService = {
 
     if (foundCount === tables.length) {
       result.schema.status = 'success';
-      result.schema.message = 'Todas as 7 tabelas do sistema Match Point estão operacionais!';
+      result.schema.message = 'Todas as 9 tabelas do sistema Match Point estão operacionais!';
       result.overallStatus = 'connected';
-      result.summary = 'Supabase 100% conectado e integrado com todas as 7 tabelas prontas.';
+      result.summary = 'Supabase 100% conectado e integrado com todas as 9 tabelas prontas.';
     } else if (foundCount > 0) {
       result.schema.status = 'warning';
-      result.schema.message = `${foundCount} de 7 tabelas encontradas. Faltam: ${missing.join(', ')}.`;
+      result.schema.message = `${foundCount} de 9 tabelas encontradas. Faltam: ${missing.join(', ')}.`;
       result.overallStatus = 'needs_sql_setup';
       result.summary = 'Conexão ativa! Algumas tabelas precisam ser criadas executando o Script SQL.';
     } else {
       result.schema.status = 'warning';
-      result.schema.message = 'Nenhuma das 7 tabelas foi criada no Supabase ainda.';
+      result.schema.message = 'Nenhuma das 9 tabelas foi criada no Supabase ainda.';
       result.overallStatus = 'needs_sql_setup';
       result.summary = 'Credenciais corretas e Supabase online! É necessário rodar o Script SQL no SQL Editor do Supabase para criar as tabelas.';
     }
@@ -436,7 +438,7 @@ export const SupabaseService = {
     };
   },
 
-  // Check live status of all 7 database tables
+  // Check live status of all database tables
   checkAllTables: async (): Promise<TableSyncStatus[]> => {
     const tables: Array<{ name: string; display: string; getLocalCount: () => number }> = [
       { name: 'tenants', display: 'Empresas Contratantes (Tenants)', getLocalCount: () => StorageService.getTenants().length },
@@ -445,7 +447,9 @@ export const SupabaseService = {
       { name: 'visits', display: 'Visitas em Campo (Visits)', getLocalCount: () => StorageService.getVisits().length },
       { name: 'visit_reports', display: 'Relatórios Segregados (Visit Reports)', getLocalCount: () => StorageService.getVisitReports().length },
       { name: 'follow_up_tasks', display: 'Régua de Follow-up (Tasks 7d/14d)', getLocalCount: () => StorageService.getFollowUpTasks().length },
-      { name: 'instagram_leads', display: 'Instagram Social Leads', getLocalCount: () => StorageService.getInstagramLeads().length }
+      { name: 'instagram_leads', display: 'Instagram Social Leads', getLocalCount: () => StorageService.getInstagramLeads().length },
+      { name: 'gifts', display: 'Catálogo de Brindes (Gifts)', getLocalCount: () => StorageService.getGifts().length },
+      { name: 'gift_logs', display: 'Distribuição de Brindes (Gift Logs)', getLocalCount: () => StorageService.getGiftLogs().length }
     ];
 
     const results: TableSyncStatus[] = [];
@@ -541,7 +545,29 @@ export const SupabaseService = {
             segment: t.segment || null,
             color_theme: t.color_theme || '#FF530D',
             logo_url: t.logo_url || null,
+            services_offered: t.services_offered || [],
             is_active: t.is_active,
+            phone: t.phone || null,
+            email: t.email || null,
+            website: t.website || null,
+            whatsapp_emergencies: t.whatsapp_emergencies || null,
+            address_street: t.address_street || null,
+            neighborhood: t.neighborhood || null,
+            city: t.city || null,
+            state: t.state || null,
+            cep: t.cep || null,
+            technical_responsible: t.technical_responsible || null,
+            technical_crmv: t.technical_crmv || null,
+            description: t.description || null,
+            differential: t.differential || null,
+            operating_hours: t.operating_hours || null,
+            contract_status: t.contract_status || null,
+            contract_token: t.contract_token || null,
+            contract_sign_url: t.contract_sign_url || null,
+            contract_text: t.contract_text || null,
+            contract_signed_at: t.contract_signed_at || null,
+            contract_pdf_url: t.contract_pdf_url || null,
+            contracted_visits_monthly: t.contracted_visits_monthly || 30,
             created_at: t.created_at,
             updated_at: t.updated_at
           })),
@@ -603,6 +629,8 @@ export const SupabaseService = {
             state: v.state || null,
             target_audience_class: v.target_audience_class || null,
             notes_general: v.notes_general || null,
+            location_lat: v.location_lat || null,
+            location_lng: v.location_lng || null,
             created_at: v.created_at,
             updated_at: v.updated_at
           })),
@@ -723,6 +751,57 @@ export const SupabaseService = {
         }
       }
 
+      // 8. Gifts
+      const giftsList = StorageService.getGifts();
+      if (giftsList.length > 0) {
+        const { error } = await supabaseAdmin.from('gifts').upsert(
+          giftsList.map((g) => ({
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            stock: g.stock,
+            type: g.type,
+            image_url: g.image_url || null,
+            tenant_id: g.tenant_id || null
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) {
+          errors.push(`Gifts: ${error.message}`);
+          tableResults.gifts = { count: 0, error: error.message };
+        } else {
+          totalUploaded += giftsList.length;
+          tableResults.gifts = { count: giftsList.length };
+        }
+      }
+
+      // 9. Gift Logs
+      const giftLogsList = StorageService.getGiftLogs();
+      if (giftLogsList.length > 0) {
+        const { error } = await supabaseAdmin.from('gift_logs').upsert(
+          giftLogsList.map((gl) => ({
+            id: gl.id,
+            gift_id: gl.gift_id,
+            gift_name: gl.gift_name,
+            veterinarian_id: gl.veterinarian_id,
+            veterinarian_name: gl.veterinarian_name,
+            promoter_id: gl.promoter_id,
+            promoter_name: gl.promoter_name,
+            distributed_at: gl.distributed_at,
+            quantity: gl.quantity,
+            notes: gl.notes || null
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) {
+          errors.push(`GiftLogs: ${error.message}`);
+          tableResults.gift_logs = { count: 0, error: error.message };
+        } else {
+          totalUploaded += giftLogsList.length;
+          tableResults.gift_logs = { count: giftLogsList.length };
+        }
+      }
+
       const timestamp = new Date().toISOString();
       SupabaseService.setLastSyncTimestamp(timestamp);
 
@@ -779,7 +858,7 @@ export const SupabaseService = {
       if (errTenants) {
         errors.push(`Tenants: ${errTenants.message}`);
       } else if (remoteTenants && remoteTenants.length > 0) {
-        localStorage.setItem('vetcrm_tenants_v1', JSON.stringify(remoteTenants));
+        localStorage.setItem('matchpoint_prod_tenants_v4', JSON.stringify(remoteTenants));
         totalDownloaded += remoteTenants.length;
       }
 
@@ -790,7 +869,7 @@ export const SupabaseService = {
       if (errUsers) {
         errors.push(`Users: ${errUsers.message}`);
       } else if (remoteUsers && remoteUsers.length > 0) {
-        localStorage.setItem('vetcrm_users_v1', JSON.stringify(remoteUsers));
+        localStorage.setItem('matchpoint_prod_users_v4', JSON.stringify(remoteUsers));
         totalDownloaded += remoteUsers.length;
       }
 
@@ -802,7 +881,7 @@ export const SupabaseService = {
       if (errVets) {
         errors.push(`Veterinarians: ${errVets.message}`);
       } else if (remoteVets && remoteVets.length > 0) {
-        localStorage.setItem('vetcrm_vets_v1', JSON.stringify(remoteVets));
+        localStorage.setItem('matchpoint_prod_vets_v4', JSON.stringify(remoteVets));
         totalDownloaded += remoteVets.length;
       }
 
@@ -814,7 +893,7 @@ export const SupabaseService = {
       if (errVisits) {
         errors.push(`Visits: ${errVisits.message}`);
       } else if (remoteVisits && remoteVisits.length > 0) {
-        localStorage.setItem('vetcrm_visits_v1', JSON.stringify(remoteVisits));
+        localStorage.setItem('matchpoint_prod_visits_v4', JSON.stringify(remoteVisits));
         totalDownloaded += remoteVisits.length;
       }
 
@@ -826,7 +905,7 @@ export const SupabaseService = {
       if (errReports) {
         errors.push(`VisitReports: ${errReports.message}`);
       } else if (remoteReports && remoteReports.length > 0) {
-        localStorage.setItem('vetcrm_visit_reports_v1', JSON.stringify(remoteReports));
+        localStorage.setItem('matchpoint_prod_visit_reports_v4', JSON.stringify(remoteReports));
         totalDownloaded += remoteReports.length;
       }
 
@@ -838,7 +917,7 @@ export const SupabaseService = {
       if (errTasks) {
         errors.push(`FollowUpTasks: ${errTasks.message}`);
       } else if (remoteTasks && remoteTasks.length > 0) {
-        localStorage.setItem('vetcrm_follow_up_tasks_v1', JSON.stringify(remoteTasks));
+        localStorage.setItem('matchpoint_prod_follow_up_tasks_v4', JSON.stringify(remoteTasks));
         totalDownloaded += remoteTasks.length;
       }
 
@@ -850,8 +929,31 @@ export const SupabaseService = {
       if (errLeads) {
         errors.push(`InstagramLeads: ${errLeads.message}`);
       } else if (remoteLeads && remoteLeads.length > 0) {
-        localStorage.setItem('vetcrm_instagram_leads_v1', JSON.stringify(remoteLeads));
+        localStorage.setItem('matchpoint_prod_instagram_leads_v4', JSON.stringify(remoteLeads));
         totalDownloaded += remoteLeads.length;
+      }
+
+      // 8. Gifts
+      const { data: remoteGifts, error: errGifts } = await supabaseAdmin
+        .from('gifts')
+        .select('*');
+      if (errGifts) {
+        errors.push(`Gifts: ${errGifts.message}`);
+      } else if (remoteGifts && remoteGifts.length > 0) {
+        localStorage.setItem('matchpoint_prod_gifts_v4', JSON.stringify(remoteGifts));
+        totalDownloaded += remoteGifts.length;
+      }
+
+      // 9. Gift Logs
+      const { data: remoteGiftLogs, error: errGiftLogs } = await supabaseAdmin
+        .from('gift_logs')
+        .select('*')
+        .order('distributed_at', { ascending: false });
+      if (errGiftLogs) {
+        errors.push(`GiftLogs: ${errGiftLogs.message}`);
+      } else if (remoteGiftLogs && remoteGiftLogs.length > 0) {
+        localStorage.setItem('matchpoint_prod_gift_logs_v4', JSON.stringify(remoteGiftLogs));
+        totalDownloaded += remoteGiftLogs.length;
       }
 
       const timestamp = new Date().toISOString();
@@ -889,7 +991,7 @@ export const SupabaseService = {
 
   // Auto-sync a single entity in the background
   autoSyncEntity: async (
-    table: 'tenants' | 'users' | 'veterinarians' | 'visits' | 'visit_reports' | 'follow_up_tasks' | 'instagram_leads',
+    table: 'tenants' | 'users' | 'veterinarians' | 'visits' | 'visit_reports' | 'follow_up_tasks' | 'instagram_leads' | 'gifts' | 'gift_logs',
     data: unknown
   ): Promise<void> => {
     if (!SupabaseService.isAutoSyncEnabled()) return;
@@ -949,9 +1051,51 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     logo_url TEXT,
     services_offered TEXT[] DEFAULT '{}'::TEXT[],
     is_active BOOLEAN DEFAULT TRUE,
+    phone TEXT,
+    email TEXT,
+    website TEXT,
+    whatsapp_emergencies TEXT,
+    address_street TEXT,
+    neighborhood TEXT,
+    city TEXT,
+    state TEXT,
+    cep TEXT,
+    technical_responsible TEXT,
+    technical_crmv TEXT,
+    description TEXT,
+    differential TEXT,
+    operating_hours TEXT,
+    contract_status TEXT,
+    contract_token TEXT,
+    contract_sign_url TEXT,
+    contract_text TEXT,
+    contract_signed_at TEXT,
+    contract_pdf_url TEXT,
+    contracted_visits_monthly INTEGER DEFAULT 30,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS website TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS whatsapp_emergencies TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS address_street TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS neighborhood TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS state TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS cep TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS technical_responsible TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS technical_crmv TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS differential TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS operating_hours TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contract_status TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contract_token TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contract_sign_url TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contract_text TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contract_signed_at TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contract_pdf_url TEXT;
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS contracted_visits_monthly INTEGER DEFAULT 30;
 ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS services_offered TEXT[] DEFAULT '{}'::TEXT[];
 
 -- 4. Tabela: Users (Usuários, Promotores Match Point & Clientes)
@@ -990,10 +1134,14 @@ CREATE TABLE IF NOT EXISTS public.veterinarians (
     state TEXT,
     target_audience_class TEXT,
     notes_general TEXT,
+    location_lat NUMERIC(10, 7),
+    location_lng NUMERIC(10, 7),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE public.veterinarians ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.veterinarians ADD COLUMN IF NOT EXISTS location_lat NUMERIC(10, 7);
+ALTER TABLE public.veterinarians ADD COLUMN IF NOT EXISTS location_lng NUMERIC(10, 7);
 
 -- 6. Tabela: Visits (Registro Físico, Check-in da Visita em Campo & Fotos/Anexos)
 CREATE TABLE IF NOT EXISTS public.visits (
@@ -1055,6 +1203,33 @@ CREATE TABLE IF NOT EXISTS public.instagram_leads (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 9.1 Tabela: Gifts (Catálogo de Brindes)
+CREATE TABLE IF NOT EXISTS public.gifts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    stock INTEGER DEFAULT 0,
+    type TEXT NOT NULL,
+    image_url TEXT,
+    tenant_id TEXT REFERENCES public.tenants(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9.2 Tabela: GiftLogs (Histórico de Distribuição de Brindes)
+CREATE TABLE IF NOT EXISTS public.gift_logs (
+    id TEXT PRIMARY KEY,
+    gift_id TEXT NOT NULL REFERENCES public.gifts(id) ON DELETE CASCADE,
+    gift_name TEXT NOT NULL,
+    veterinarian_id TEXT NOT NULL REFERENCES public.veterinarians(id) ON DELETE CASCADE,
+    veterinarian_name TEXT NOT NULL,
+    promoter_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    promoter_name TEXT NOT NULL,
+    distributed_at TIMESTAMPTZ DEFAULT NOW(),
+    quantity INTEGER DEFAULT 1,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 10. Habilitar RLS em todas as tabelas
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -1063,6 +1238,8 @@ ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visit_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.follow_up_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.instagram_leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gifts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gift_logs ENABLE ROW LEVEL SECURITY;
 
 -- 11. Políticas de Acesso Permissivo para Service Role (Bypass) e Autenticados
 DO $$ BEGIN
@@ -1093,6 +1270,14 @@ DO $$ BEGIN
     CREATE POLICY "Service Role All Access IG" ON public.instagram_leads FOR ALL USING (true);
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+    CREATE POLICY "Service Role All Access Gifts" ON public.gifts FOR ALL USING (true);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE POLICY "Service Role All Access GiftLogs" ON public.gift_logs FOR ALL USING (true);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- 12. Public read/write para chaves configuradas (Anon/Auth)
 DO $$ BEGIN
     CREATE POLICY "Allow public read access" ON public.tenants FOR SELECT USING (true);
@@ -1120,6 +1305,14 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE POLICY "Allow public read ig" ON public.instagram_leads FOR ALL USING (true);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE POLICY "Allow public read gifts" ON public.gifts FOR ALL USING (true);
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE POLICY "Allow public read giftlogs" ON public.gift_logs FOR ALL USING (true);
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 13. POLÍTICA DE SIGILO E ISOLAMENTO RIGOROSO ENTRE PROMOTORES (Promoter Confidentiality)

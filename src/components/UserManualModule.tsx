@@ -39,7 +39,11 @@ interface UserManualModuleProps {
 
 export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserRole }) => {
   const [viewMode, setViewMode] = useState<'document' | 'presentation'>('document');
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'promoter' | 'tenant' | 'admin'>('all');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<'all' | 'promoter' | 'tenant' | 'admin'>(() => {
+    if (currentUserRole === 'promoter') return 'promoter';
+    if (currentUserRole === 'tenant_client') return 'tenant';
+    return 'all';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChapter, setActiveChapter] = useState<string>('cap-1');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -74,7 +78,7 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
   };
 
   // Presentation Slides Data
-  const slides = [
+  const rawSlides = [
     {
       id: 1,
       tag: 'Apresentação Geral',
@@ -88,7 +92,8 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Todos os Usuários',
       accentColor: '#FF530D',
-      icon: Layers
+      icon: Layers,
+      allowedRoles: ['super_admin', 'promoter', 'tenant_client']
     },
     {
       id: 2,
@@ -103,13 +108,14 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Segurança & Compliance',
       accentColor: '#111111',
-      icon: ShieldCheck
+      icon: ShieldCheck,
+      allowedRoles: ['super_admin', 'promoter', 'tenant_client']
     },
     {
       id: 3,
       tag: 'Perfil Promotor de Campo',
       title: 'Módulo de Campo: Check-in & Dossiê 360°',
-      subtitle: 'Fluxo ágil para o promotor durante visitas clínicas presenciais',
+      subtitle: 'Fluxo ágil para o promotor durante visitas clínicas presença',
       bullets: [
         'Localização Rápida: Busca de médicos veterinários por Nome, CRMV, Bairro ou Clínica.',
         'Check-in Simultâneo: Seleção das marcas abordadas e anotações específicas por representada.',
@@ -118,7 +124,8 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Perfil Promotor',
       accentColor: '#10B981',
-      icon: Smartphone
+      icon: Smartphone,
+      allowedRoles: ['super_admin', 'promoter']
     },
     {
       id: 4,
@@ -133,7 +140,8 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Perfil Promotor',
       accentColor: '#FBBF3D',
-      icon: Calendar
+      icon: Calendar,
+      allowedRoles: ['super_admin', 'promoter']
     },
     {
       id: 5,
@@ -148,7 +156,8 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Perfil Contratante',
       accentColor: '#2563EB',
-      icon: Building2
+      icon: Building2,
+      allowedRoles: ['super_admin', 'tenant_client']
     },
     {
       id: 6,
@@ -163,7 +172,8 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Gestão & Contratante',
       accentColor: '#FF530D',
-      icon: FileSpreadsheet
+      icon: FileSpreadsheet,
+      allowedRoles: ['super_admin', 'tenant_client']
     },
     {
       id: 7,
@@ -178,7 +188,8 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Super Admin',
       accentColor: '#D90000',
-      icon: Cpu
+      icon: Cpu,
+      allowedRoles: ['super_admin']
     },
     {
       id: 8,
@@ -193,9 +204,12 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
       ],
       roleBadge: 'Guia de Instalação',
       accentColor: '#10B981',
-      icon: CheckCircle2
+      icon: CheckCircle2,
+      allowedRoles: ['super_admin', 'promoter', 'tenant_client']
     }
   ];
+
+  const slides = rawSlides.filter((s) => s.allowedRoles.includes(currentUserRole));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -420,50 +434,58 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
               {/* Role Filter Chips */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <span className="text-xs font-bold text-slate-700 shrink-0">Filtrar por Perfil:</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRoleFilter('all')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
-                    selectedRoleFilter === 'all'
-                      ? 'bg-[#111111] text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  Todos os Perfis
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRoleFilter('promoter')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
-                    selectedRoleFilter === 'promoter'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                  }`}
-                >
-                  Promotor de Campo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRoleFilter('tenant')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
-                    selectedRoleFilter === 'tenant'
-                      ? 'bg-[#2563EB] text-white shadow-xs'
-                      : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
-                  }`}
-                >
-                  Cliente Contratante (RLS)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRoleFilter('admin')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
-                    selectedRoleFilter === 'admin'
-                      ? 'bg-[#D90000] text-white shadow-xs'
-                      : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
-                  }`}
-                >
-                  Super Admin
-                </button>
+                {currentUserRole === 'super_admin' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoleFilter('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
+                      selectedRoleFilter === 'all'
+                        ? 'bg-[#111111] text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    Todos os Perfis
+                  </button>
+                )}
+                {(currentUserRole === 'super_admin' || currentUserRole === 'promoter') && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoleFilter('promoter')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
+                      selectedRoleFilter === 'promoter'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Promotor de Campo
+                  </button>
+                )}
+                {(currentUserRole === 'super_admin' || currentUserRole === 'tenant_client') && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoleFilter('tenant')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
+                      selectedRoleFilter === 'tenant'
+                        ? 'bg-[#2563EB] text-white shadow-xs'
+                        : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'
+                    }`}
+                  >
+                    Cliente Contratante (RLS)
+                  </button>
+                )}
+                {currentUserRole === 'super_admin' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoleFilter('admin')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold shrink-0 transition-all cursor-pointer ${
+                      selectedRoleFilter === 'admin'
+                        ? 'bg-[#D90000] text-white shadow-xs'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                    }`}
+                  >
+                    Super Admin
+                  </button>
+                )}
               </div>
 
               {/* Quick Search Input */}
@@ -485,13 +507,13 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
                 Sumário Rápido:
               </span>
               {[
-                { id: 'cap-1', label: 'Cap. 1: Visão & RLS' },
-                { id: 'cap-2', label: 'Cap. 2: Promotor de Campo' },
-                { id: 'cap-3', label: 'Cap. 3: Cliente Contratante' },
-                { id: 'cap-4', label: 'Cap. 4: Super Admin' },
-                { id: 'cap-5', label: 'Cap. 5: Instalação PWA' },
-                { id: 'cap-6', label: 'Cap. 6: Dúvidas & Boas Práticas' }
-              ].map((c) => (
+                { id: 'cap-1', label: 'Cap. 1: Visão & RLS', allowedRoles: ['super_admin', 'promoter', 'tenant_client'] },
+                { id: 'cap-2', label: 'Cap. 2: Promotor de Campo', allowedRoles: ['super_admin', 'promoter'] },
+                { id: 'cap-3', label: 'Cap. 3: Cliente Contratante', allowedRoles: ['super_admin', 'tenant_client'] },
+                { id: 'cap-4', label: 'Cap. 4: Super Admin', allowedRoles: ['super_admin'] },
+                { id: 'cap-5', label: 'Cap. 5: Instalação PWA', allowedRoles: ['super_admin', 'promoter', 'tenant_client'] },
+                { id: 'cap-6', label: 'Cap. 6: Dúvidas & Boas Práticas', allowedRoles: ['super_admin', 'promoter', 'tenant_client'] }
+              ].filter(c => c.allowedRoles.includes(currentUserRole)).map((c) => (
                 <a
                   key={c.id}
                   href={`#${c.id}`}
@@ -543,7 +565,7 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
             {/* ===================================================== */}
             {/* CAPÍTULO 1: VISÃO GERAL & ARQUITETURA MULTI-TENANT */}
             {/* ===================================================== */}
-            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'admin') && (
+            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'admin' || selectedRoleFilter === 'promoter' || selectedRoleFilter === 'tenant') && (
               <section id="cap-1" className="space-y-6 pt-4">
                 <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
                   <div className="h-9 w-9 rounded-xl bg-[#111111] text-[#FBBF3D] flex items-center justify-center font-black text-sm shrink-0">
@@ -609,7 +631,7 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
             {/* ===================================================== */}
             {/* CAPÍTULO 2: MANUAL DO PROMOTOR DE CAMPO */}
             {/* ===================================================== */}
-            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'promoter') && (
+            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'promoter') && (currentUserRole === 'super_admin' || currentUserRole === 'promoter') && (
               <section id="cap-2" className="space-y-6 pt-6 border-t border-slate-200">
                 <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
                   <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0">
@@ -722,7 +744,7 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
             {/* ===================================================== */}
             {/* CAPÍTULO 3: MANUAL DO CLIENTE CONTRATANTE */}
             {/* ===================================================== */}
-            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'tenant') && (
+            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'tenant') && (currentUserRole === 'super_admin' || currentUserRole === 'tenant_client') && (
               <section id="cap-3" className="space-y-6 pt-6 border-t border-slate-200">
                 <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
                   <div className="h-9 w-9 rounded-xl bg-[#2563EB] text-white flex items-center justify-center font-black text-sm shrink-0">
@@ -791,7 +813,7 @@ export const UserManualModule: React.FC<UserManualModuleProps> = ({ currentUserR
             {/* ===================================================== */}
             {/* CAPÍTULO 4: MANUAL DO GESTOR MASTER (SUPER ADMIN) */}
             {/* ===================================================== */}
-            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'admin') && (
+            {(selectedRoleFilter === 'all' || selectedRoleFilter === 'admin') && currentUserRole === 'super_admin' && (
               <section id="cap-4" className="space-y-6 pt-6 border-t border-slate-200">
                 <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
                   <div className="h-9 w-9 rounded-xl bg-[#D90000] text-white flex items-center justify-center font-black text-sm shrink-0">

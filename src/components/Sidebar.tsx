@@ -24,7 +24,9 @@ import {
   Users,
   BarChart3,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Map,
+  Gift
 } from 'lucide-react';
 import { Tenant, User, UserRole } from '../types';
 import { MatchPointLogo } from './MatchPointLogo';
@@ -139,6 +141,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       category: 'field'
     },
     {
+      id: 'map',
+      label: 'Mapa de Visitas',
+      fullLabel: 'Mapa de Calor & Visitas',
+      sublabel: 'Regiões Quentes Nacional',
+      icon: Map,
+      allowedRoles: ['super_admin', 'promoter'],
+      category: 'field'
+    },
+    {
       id: 'tenant-portal',
       label: 'Portal RLS',
       fullLabel: 'Painel do Contratante',
@@ -163,6 +174,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       sublabel: 'Guia Passo a Passo & Slides',
       icon: BookOpen,
       allowedRoles: ['super_admin', 'promoter', 'tenant_client'],
+      category: 'management'
+    },
+    {
+      id: 'gifts',
+      label: 'Brindes & Mimos',
+      fullLabel: 'Gestão de Brindes',
+      sublabel: 'Estoque, Catálogo & Entregas',
+      icon: Gift,
+      allowedRoles: ['super_admin', 'promoter'],
       category: 'management'
     },
     // SENSITIVE ADMIN ONLY MODULES (Match Point Gestor Master)
@@ -565,67 +585,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                   StorageService.getSystemMode() === 'production' 
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                    : 'bg-[#FBBF3D]/10 text-[#FBBF3D] border border-[#FBBF3D]/20'
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-black' 
+                    : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                 }`}>
-                  {StorageService.getSystemMode() === 'production' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'}
+                  {StorageService.getSystemMode() === 'production' ? 'PRODUÇÃO (ATIVO)' : 'HOMOLOGAÇÃO'}
                 </span>
               </div>
               <p className="text-[9px] text-slate-400 leading-tight">
                 {StorageService.getSystemMode() === 'production' 
-                  ? 'Base de dados 100% limpa ativa. Pronto para operação real.' 
-                  : 'Modo demonstração/homologação ativo com veterinários fictícios.'}
+                  ? 'Base de dados 100% limpa para produção ativa.' 
+                  : 'Modo demonstração com dados e veterinários simulados.'}
               </p>
 
-              {showConfirmMode ? (
-                <div className="bg-[#222222] p-2 rounded-lg border border-[#333333] space-y-2 mt-1.5 animate-fadeIn">
-                  <p className="text-[9px] font-semibold text-white leading-snug">
-                    Confirmar mudança para Modo {showConfirmMode === 'production' ? 'Produção (Limpo)' : 'Homologação'}?
-                  </p>
-                  <div className="flex gap-1.5">
-                    <button
-                      id="btn-confirm-mode"
-                      onClick={() => {
-                        StorageService.setSystemMode(showConfirmMode);
-                        setShowConfirmMode(null);
-                        window.location.reload();
-                      }}
-                      className="flex-1 py-1 px-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] rounded-md transition-all cursor-pointer text-center"
-                    >
-                      Confirmar
-                    </button>
-                    <button
-                      id="btn-cancel-mode"
-                      onClick={() => setShowConfirmMode(null)}
-                      className="flex-1 py-1 px-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 font-bold text-[9px] rounded-md transition-all cursor-pointer text-center"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  id="btn-toggle-system-mode"
-                  onClick={() => {
-                    const currentMode = StorageService.getSystemMode();
-                    const nextMode = currentMode === 'simulation' ? 'production' : 'simulation';
-                    setShowConfirmMode(nextMode);
-                  }}
-                  className="w-full mt-1 py-1.5 px-2 bg-[#252525] hover:bg-[#333333] border border-[#333333] hover:border-[#444444] rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  {StorageService.getSystemMode() === 'production' ? (
-                    <>
-                      <ToggleRight className="h-4 w-4 text-emerald-400 shrink-0" />
-                      Mudar para Homologação
-                    </>
-                  ) : (
-                    <>
-                      <ToggleLeft className="h-4 w-4 text-slate-400 shrink-0" />
-                      Ativar Produção (Base Limpa)
-                    </>
-                  )}
-                </button>
-              )}
+              <button
+                id="btn-toggle-system-mode"
+                onClick={() => {
+                  const currentMode = StorageService.getSystemMode();
+                  const nextMode = currentMode === 'simulation' ? 'production' : 'simulation';
+                  StorageService.setSystemMode(nextMode);
+                  window.location.reload();
+                }}
+                className={`w-full mt-1 py-1.5 px-2 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                  StorageService.getSystemMode() === 'production'
+                    ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-600/10'
+                }`}
+              >
+                {StorageService.getSystemMode() === 'production' ? (
+                  <>
+                    <ToggleRight className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>Mudar para Homologação</span>
+                  </>
+                ) : (
+                  <>
+                    <ToggleLeft className="h-4 w-4 text-slate-300 shrink-0" />
+                    <span>Ativar Produção (Base Limpa) 🟢</span>
+                  </>
+                )}
+              </button>
             </div>
           ) : (
             <button

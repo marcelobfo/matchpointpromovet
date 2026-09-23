@@ -28,6 +28,13 @@ export interface Tenant {
   services_offered?: string[];
   operating_hours?: string;
   is_active: boolean;
+  contract_status?: 'pending' | 'signed' | 'unsigned';
+  contract_token?: string;
+  contract_sign_url?: string;
+  contract_text?: string;
+  contract_signed_at?: string;
+  contract_pdf_url?: string;
+  contracted_visits_monthly?: number;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +68,8 @@ export interface Veterinarian {
   state: string;
   target_audience_class: 'Classe A' | 'Classe B' | 'Classe C' | 'Misto';
   notes_general?: string;
+  location_lat?: number;
+  location_lng?: number;
   created_at: string;
   updated_at: string;
 }
@@ -229,4 +238,27 @@ export interface EvolutionMessageTemplate {
   textTemplate: string;
   defaultMediaUrl?: string;
   caption?: string;
+}
+
+export interface Gift {
+  id: string;
+  name: string;
+  description: string;
+  stock: number;
+  type: 'fidelidade' | 'institucional' | 'campanha' | 'outro';
+  image_url?: string;
+  tenant_id?: string; // Optional if gift is branded
+}
+
+export interface GiftLog {
+  id: string;
+  gift_id: string;
+  gift_name: string;
+  veterinarian_id: string;
+  veterinarian_name: string;
+  promoter_id: string;
+  promoter_name: string;
+  distributed_at: string;
+  quantity: number;
+  notes?: string;
 }

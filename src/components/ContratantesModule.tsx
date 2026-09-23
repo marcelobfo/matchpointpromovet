@@ -23,7 +23,12 @@ import {
   Palette,
   KeyRound,
   UserCheck,
-  UserPlus
+  UserPlus,
+  FileText,
+  RefreshCw,
+  ExternalLink,
+  PenTool,
+  AlertTriangle
 } from 'lucide-react';
 import { Tenant, User } from '../types';
 import { StorageService } from '../services/storage';
@@ -58,6 +63,13 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  // Contract settings states
+  const [activeAdminTab, setActiveAdminTab] = useState<'list' | 'contracts'>('list');
+  const [contractTemplateText, setContractTemplateText] = useState(() => StorageService.getContractTemplate());
+  const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+  const [contractEditorMode, setContractEditorMode] = useState<'edit' | 'preview'>('edit');
+  const [previewContractTenant, setPreviewContractTenant] = useState<Tenant | null>(null);
+
   // Quick User Manager for Tenant
   const [managingUsersTenant, setManagingUsersTenant] = useState<Tenant | null>(null);
   const [newUserFullName, setNewUserFullName] = useState('');
@@ -86,7 +98,8 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
     description: '',
     differential: '',
     services_offered: [] as string[],
-    is_active: true
+    is_active: true,
+    contracted_visits_monthly: 30
   });
 
   const [serviceInput, setServiceInput] = useState('');
@@ -134,7 +147,8 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
         'Radiologia Digital Direta (DR)',
         'Eletrocardiograma Digital e Holter 24h'
       ],
-      is_active: true
+      is_active: true,
+      contracted_visits_monthly: 30
     });
     setInitialUserForm({
       full_name: '',
@@ -168,7 +182,8 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
       description: tenant.description || '',
       differential: tenant.differential || '',
       services_offered: tenant.services_offered || [],
-      is_active: tenant.is_active
+      is_active: tenant.is_active,
+      contracted_visits_monthly: tenant.contracted_visits_monthly || 30
     });
     setIsModalOpen(true);
   };
@@ -221,6 +236,25 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
 
     setIsModalOpen(false);
     onDataChanged();
+  };
+
+  const insertTextAtCursor = (before: string, after: string = '') => {
+    const textarea = document.getElementById('contract-textarea') as HTMLTextAreaElement;
+    if (!textarea) {
+      setContractTemplateText((prev) => prev + before + after);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selected = text.substring(start, end);
+    const replacement = before + selected + after;
+    setContractTemplateText(text.substring(0, start) + replacement + text.substring(end));
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+    }, 50);
   };
 
   const handleToggleActive = (tenant: Tenant) => {
@@ -350,7 +384,38 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Sub-Navigation Tabs: Contratantes vs Contratos & ZapSign */}
+      <div className="flex items-center gap-2 pt-1 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveAdminTab('list')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all cursor-pointer ${
+            activeAdminTab === 'list'
+              ? 'bg-[#FF530D] text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-[#E8D9C8]'
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          <span>Lista de Contratantes ({totalTenants})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveAdminTab('contracts')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all cursor-pointer ${
+            activeAdminTab === 'contracts'
+              ? 'bg-[#111111] text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-[#E8D9C8]/40 border border-[#E8D9C8]'
+          }`}
+        >
+          <FileText className="h-4 w-4 text-[#FF530D]" />
+          <span>Contratos &amp; ZapSign ({totalTenants})</span>
+        </button>
+      </div>
+
+      {activeAdminTab === 'list' && (
+        <>
+          {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-[#E8D9C8] shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -630,6 +695,515 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {/* SUB-TAB 2: CONTRATOS & INTEGRATION ZAPSIGN */}
+      {activeAdminTab === 'contracts' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Integration Banner */}
+          <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-4 text-left">
+              <div className="h-12 w-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+                ZS
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+                  Gestão & Assinatura de Contratos Digitais (ZapSign) 🖊️
+                </h3>
+                <p className="text-xs text-slate-600 font-semibold leading-relaxed max-w-3xl">
+                  Configure a minuta padrão do contrato da Match Point. O sistema substitui automaticamente os dados do contratante (Razão Social, CNPJ, Responsável, CRMV, etc.) no cadastro e gera o link de assinatura digital de imediato.
+                </p>
+              </div>
+            </div>
+            <div className="text-xs bg-white/80 border border-sky-300 px-3 py-1.5 rounded-xl text-sky-800 font-black shrink-0">
+              Sincronização Automática Ativa
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Side: Minuta Template Editor */}
+            <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-[#E8D9C8] shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-[#FF530D]" />
+                  <h4 className="font-black text-slate-800 text-sm sm:text-base">
+                    Modelo de Minuta de Contrato
+                  </h4>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Editor Mode Toggles */}
+                  <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setContractEditorMode('edit')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        contractEditorMode === 'edit'
+                          ? 'bg-white text-[#111111] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      ✏️ Editor HTML
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContractEditorMode('preview')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        contractEditorMode === 'preview'
+                          ? 'bg-[#111111] text-white shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      📄 Folhas A4 ({contractTemplateText.split('[QUEBRA_PAGINA]').length})
+                    </button>
+                  </div>
+
+                  {!isEditingTemplate ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTemplate(true)}
+                      className="px-3.5 py-1.5 bg-[#FF530D] text-white hover:bg-[#E04505] rounded-xl text-xs font-bold cursor-pointer transition-all"
+                    >
+                      Editar Modelo
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          StorageService.saveContractTemplate(contractTemplateText);
+                          setIsEditingTemplate(false);
+                          showToast('Minuta modelo de contrato salva com sucesso!');
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setContractTemplateText(StorageService.getContractTemplate());
+                          setIsEditingTemplate(false);
+                        }}
+                        className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        Sair
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {contractEditorMode === 'edit' ? (
+                <div className="space-y-4">
+                  {/* Basic Visual Editor Toolbar */}
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Formatação Básica:</span>
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('<b>', '</b>')}
+                        title="Negrito"
+                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('<i>', '</i>')}
+                        title="Itálico"
+                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs italic font-black text-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        I
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('<h2>', '</h2>')}
+                        title="Título 1"
+                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Título 1
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('<h3>', '</h3>')}
+                        title="Título 2"
+                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Título 2
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('<p className="mb-4 text-justify">', '</p>')}
+                        title="Parágrafo"
+                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Parágrafo
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('<ul>\n  <li>', '</li>\n</ul>')}
+                        title="Lista"
+                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        • Lista
+                      </button>
+                      
+                      {/* PAGE BREAK ACTION BUTTON */}
+                      <button
+                        type="button"
+                        disabled={!isEditingTemplate}
+                        onClick={() => insertTextAtCursor('\n[QUEBRA_PAGINA]\n')}
+                        title="Inserir Quebra de Página"
+                        className="px-2.5 py-1 bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 rounded-lg text-[10px] font-extrabold flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        📄 Inserir Quebra de Página (A4)
+                      </button>
+                    </div>
+
+                    {/* Variables Quick Inserter */}
+                    <div className="space-y-1.5 border-t border-slate-200 pt-2.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Campos Dinâmicos Disponíveis (Clique para inserir):</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: 'Razão Social', code: '{{company_name}}' },
+                          { label: 'Nome Fantasia', code: '{{trade_name}}' },
+                          { label: 'CNPJ', code: '{{cnpj}}' },
+                          { label: 'Cidade', code: '{{city}}' },
+                          { label: 'Estado', code: '{{state}}' },
+                          { label: 'Resp. Técnico', code: '{{technical_responsible}}' },
+                          { label: 'CRMV', code: '{{technical_crmv}}' },
+                          { label: 'Data Hoje', code: '{{date}}' }
+                        ].map((field) => (
+                          <button
+                            key={field.code}
+                            type="button"
+                            disabled={!isEditingTemplate}
+                            onClick={() => insertTextAtCursor(field.code)}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-extrabold border transition-colors cursor-pointer ${
+                              isEditingTemplate
+                                ? 'bg-[#FDF2E7] text-[#FF530D] border-[#E8D9C8] hover:bg-[#FF530D] hover:text-white'
+                                : 'bg-slate-50 text-slate-400 border-slate-100 cursor-not-allowed'
+                            }`}
+                          >
+                            {field.label} ({field.code})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <textarea
+                      id="contract-textarea"
+                      value={contractTemplateText}
+                      onChange={(e) => setContractTemplateText(e.target.value)}
+                      disabled={!isEditingTemplate}
+                      rows={18}
+                      className={`w-full p-4 rounded-2xl border font-mono text-xs leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-[#FF530D]/20 focus:border-[#FF530D] ${
+                        isEditingTemplate
+                          ? 'bg-white border-[#E8D9C8] text-slate-800'
+                          : 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed'
+                      }`}
+                      placeholder="Cole ou redija o contrato de representação usando formatação HTML básica e use [QUEBRA_PAGINA] para definir a paginação do PDF."
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* LIVE PAGINATED A4 PREVIEW MODE */
+                <div className="bg-slate-100 rounded-2xl p-6 overflow-y-auto max-h-[640px] space-y-6">
+                  {(() => {
+                    const pages = contractTemplateText.split(/\[QUEBRA_PAGINA\]/gi);
+                    return pages.map((pageContent, index) => (
+                      <div
+                        key={index}
+                        className="bg-white p-8 sm:p-12 rounded-xl border border-slate-200 shadow-md relative min-h-[550px] flex flex-col justify-between font-serif text-slate-800 text-xs text-justify leading-relaxed mx-auto max-w-[500px]"
+                      >
+                        {/* Page Boundary dashed header for visual indicator */}
+                        <div className="absolute top-0 left-0 right-0 border-t-2 border-dashed border-[#FF530D]/20 py-1 text-center text-[8px] font-mono font-bold text-[#FF530D]/50 uppercase tracking-widest select-none">
+                          Início da Página {index + 1}
+                        </div>
+
+                        <div 
+                          className="prose prose-sm max-w-none pt-4 flex-1 whitespace-pre-wrap font-serif"
+                          dangerouslySetInnerHTML={{ 
+                            __html: pageContent || '<p className="text-slate-400 italic">Página em branco. Digite algum conteúdo no editor HTML.</p>' 
+                          }}
+                        />
+
+                        <div className="mt-6 pt-2.5 border-t border-slate-100 flex justify-between text-[9px] font-mono text-slate-400 font-bold uppercase select-none">
+                          <span>Match Point • Contrato</span>
+                          <span>Página {index + 1} de {pages.length}</span>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Right Side: ZapSign Credentials / Status Check */}
+            <div className="lg:col-span-5 bg-white rounded-3xl p-5 sm:p-6 border border-[#E8D9C8] shadow-xs flex flex-col justify-between space-y-4">
+              <div className="space-y-4">
+                <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-sky-600" />
+                  <h4 className="font-black text-slate-800 text-sm sm:text-base">
+                    Configurações de Integração
+                  </h4>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Chave de API ZapSign (Token)
+                    </label>
+                    <input
+                      type="password"
+                      value="••••••••••••••••••••••••••••••••••••••••"
+                      disabled
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-400 cursor-not-allowed"
+                    />
+                    <span className="text-[9px] text-slate-400 block mt-1 font-semibold">
+                      Chave mestre de API ZapSign ativa para geração de minutas eletrônicas.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Modo Operacional de Teste
+                    </label>
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                        <span className="text-xs font-bold text-emerald-800">Simulador Local Ativo</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
+                        A chave de API está em modo Sandbox Simulador. Todas as assinaturas desenhadas no portal do cliente disparam webhooks locais atualizando o CRM instantaneamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[#FDF2E7]/70 p-4 rounded-2xl border border-[#E8D9C8] text-xs text-[#FF530D] font-bold space-y-1">
+                <span>Dica de Implementação</span>
+                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+                  Qualquer novo contratante adicionado receberá um token do ZapSign, o contrato gerado com as suas variáveis e ficará pendente de assinatura até que assine via portal do cliente ou admin.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Table: CRM de Acompanhamento de Assinaturas */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#E8D9C8] shadow-xs space-y-4">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <h4 className="font-black text-slate-800 text-sm sm:text-base">
+                Acompanhamento em Tempo Real dos Contratos
+              </h4>
+              <span className="text-xs text-slate-400 font-bold">
+                Total: <strong>{tenants.length}</strong> contratos configurados
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                    <th className="py-3 px-4">Contratante</th>
+                    <th className="py-3 px-4">Responsável Técnico</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Token / URL</th>
+                    <th className="py-3 px-4 text-right">Ações de Gestão</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tenants.map((t) => {
+                    const isSigned = t.contract_status === 'signed';
+                    return (
+                      <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-slate-800">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0"
+                              style={{ backgroundColor: t.color_theme || '#FF530D' }}
+                            >
+                              {t.trade_name.substring(0, 1)}
+                            </div>
+                            <div>
+                              <div className="font-black text-slate-800">{t.trade_name}</div>
+                              <div className="text-[10px] text-slate-400 font-bold uppercase">{t.cnpj || 'Sem CNPJ'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-slate-700">{t.technical_responsible || 'Não informado'}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">{t.technical_crmv || '—'}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {isSigned ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                              <span>Assinado</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1 animate-pulse">
+                              <AlertTriangle className="h-3 w-3 text-amber-600" />
+                              <span>Pendente</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-[10px] text-slate-400">
+                          <div className="truncate w-36" title={t.contract_token}>
+                            {t.contract_token || '—'}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewContractTenant(t)}
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] uppercase transition-all cursor-pointer"
+                              title="Visualizar minuta preenchida com dados reais"
+                            >
+                              Visualizar
+                            </button>
+
+                            {!isSigned ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Fast signature simulation
+                                  StorageService.updateTenant(t.id, {
+                                    contract_status: 'signed',
+                                    contract_signed_at: new Date().toISOString(),
+                                    contract_pdf_url: `https://sandbox.api.zapsign.com.br/v1/docs/${t.contract_token}/signed_complete.pdf`
+                                  });
+                                  onDataChanged();
+                                  showToast(`Contrato da ${t.trade_name} assinado via Simulador!`);
+                                }}
+                                className="px-2.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-lg text-[10px] uppercase inline-flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <PenTool className="h-2.5 w-2.5" />
+                                <span>Assinar</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Reset back to pending
+                                  StorageService.updateTenant(t.id, {
+                                    contract_status: 'pending',
+                                    contract_signed_at: undefined,
+                                    contract_pdf_url: undefined
+                                  });
+                                  onDataChanged();
+                                  showToast(`Contrato da ${t.trade_name} resetado para pendente!`);
+                                }}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[10px] uppercase inline-flex items-center gap-1 transition-all cursor-pointer border border-rose-100"
+                                title="Resetar assinatura para simular de novo"
+                              >
+                                <RefreshCw className="h-2.5 w-2.5" />
+                                <span>Resetar</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                alert(`Link enviado com sucesso por WhatsApp para o responsável legal da ${t.trade_name}!`);
+                              }}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+                              title="Disparar lembrete via WhatsApp"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CUSTOMIZED CONTRACT PREVIEW FOR SPECIFIC TENANT */}
+      {previewContractTenant && (() => {
+        const template = StorageService.getContractTemplate();
+        const replacedText = StorageService.getTenants().find(t => t.id === previewContractTenant.id)?.contract_text || template;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+            <div className="bg-[#F8FAFC] rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-[80vh]">
+              {/* Modal Header */}
+              <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-[#FF530D]" />
+                  <div>
+                    <h4 className="font-black text-slate-800 text-sm">
+                      Visualização de Minuta Gerada
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">
+                      Contratante: {previewContractTenant.trade_name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewContractTenant(null)}
+                  className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Document Text */}
+              <div className="flex-1 p-6 overflow-y-auto bg-slate-100 space-y-6">
+                {(() => {
+                  const pages = replacedText.split(/\[QUEBRA_PAGINA\]/gi);
+                  return pages.map((pageContent, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200 shadow-sm font-serif text-slate-800 leading-relaxed text-xs relative flex flex-col justify-between min-h-[500px]"
+                    >
+                      <div className="absolute top-0 left-0 right-0 border-t border-dashed border-slate-200 py-1 text-center text-[8px] font-mono font-bold text-slate-400 select-none uppercase tracking-widest">
+                        Página {idx + 1}
+                      </div>
+                      <div 
+                        className="prose prose-sm max-w-none pt-2 flex-1 whitespace-pre-wrap font-serif text-justify"
+                        dangerouslySetInnerHTML={{ __html: pageContent }}
+                      />
+                      <div className="mt-4 pt-2 border-t border-slate-50 flex justify-between text-[9px] font-mono text-slate-400 font-bold select-none uppercase">
+                        <span>{previewContractTenant.company_name}</span>
+                        <span>Página {idx + 1} de {pages.length}</span>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-white border-t border-slate-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPreviewContractTenant(null)}
+                  className="px-5 py-2.5 bg-[#111111] hover:bg-[#222222] text-white rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  Fechar Visualização
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL: CADASTRO / EDIÇÃO COMPLETA DO CONTRATANTE                          */}
@@ -724,6 +1298,21 @@ export const ContratantesModule: React.FC<ContratantesModuleProps> = ({
                       value={formData.segment}
                       onChange={(e) => setFormData({ ...formData, segment: e.target.value })}
                       placeholder="Ex: Diagnóstico por Imagem e Cardiologia Veterinária"
+                      className="w-full px-3.5 py-2.5 bg-[#FDF2E7]/40 border border-[#E8D9C8] rounded-xl text-xs sm:text-sm font-semibold text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Visitas Contratadas Mensais *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={formData.contracted_visits_monthly}
+                      onChange={(e) => setFormData({ ...formData, contracted_visits_monthly: parseInt(e.target.value) || 30 })}
+                      placeholder="Ex: 30"
                       className="w-full px-3.5 py-2.5 bg-[#FDF2E7]/40 border border-[#E8D9C8] rounded-xl text-xs sm:text-sm font-semibold text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
                     />
                   </div>
