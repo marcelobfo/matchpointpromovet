@@ -33,9 +33,10 @@ import {
   Cake,
   ExternalLink,
   ChevronDown,
-  Gift as GiftIcon
+  Gift as GiftIcon,
+  User as UserIcon
 } from 'lucide-react';
-import { Veterinarian, Tenant, User, FeedbackSentiment, Visit, VisitReport, UserRole, Gift } from '../types';
+import type { Veterinarian, Tenant, User, FeedbackSentiment, Visit, VisitReport, UserRole, Gift } from '../types';
 import { NewVetModal } from './NewVetModal';
 import { VetProfileDossierModal } from './VetProfileDossierModal';
 import { StorageService } from '../services/storage';
@@ -846,42 +847,6 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                   </div>
                 </div>
 
-                {/* Last Visit Information for Selected Vet */}
-                {(() => {
-                  const selVetVisits = visits
-                    .filter((v) => v.veterinarian_id === selectedVet.id)
-                    .sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
-                  const lastVisitSel = selVetVisits[0];
-                  const lastProm = lastVisitSel ? promoters.find((p) => p.id === lastVisitSel.promoter_id) : null;
-                  const lastPromName = lastProm?.full_name || (lastVisitSel?.promoter_id === 'user-admin' ? 'Administrador Match Point' : 'Promotor');
-
-                  return lastVisitSel ? (
-                    <div className="bg-emerald-50/90 border border-emerald-300/80 rounded-xl p-3 text-xs flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="h-8 w-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                          <UserCheck className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
-                            Última Visita Realizada a este Cliente
-                          </span>
-                          <span className="font-extrabold text-emerald-950 truncate block text-xs sm:text-sm">
-                            Promotor: {lastPromName}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded-md shrink-0">
-                        {new Date(lastVisitSel.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-500 font-medium flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span>Primeira visita a ser realizada para este médico-veterinário</span>
-                    </div>
-                  );
-                })()}
-
                 {selectedVet.notes_general && (
                   <div className="bg-[#FDF2E7] p-3 rounded-xl text-xs text-slate-700 border border-[#E8D9C8] leading-relaxed">
                     <strong className="text-[#111111]">Perfil / Hábitos:</strong> {selectedVet.notes_general}
@@ -890,247 +855,272 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
               </div>
             )}
 
-            {/* Promoter & Logistics metadata */}
-            <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-2">
-                <Clock className="h-4 w-4 text-[#FF530D]" />
-                Dados da Operação de Campo
-              </h4>
+            {selectedVet && (
+              <>
+                {/* Promoter & Logistics metadata */}
+                <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[#FF530D]" />
+                    Dados da Operação de Campo
+                  </h4>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
-                    <span>Promotor Responsável</span>
-                    {isPromoterRole && (
-                      <span className="text-[9px] text-[#FF530D] font-bold">🔒 Sua Sessão</span>
-                    )}
-                  </label>
-                  {isPromoterRole ? (
-                    <div className="w-full text-xs font-bold p-2.5 bg-emerald-50/80 border border-emerald-300 rounded-xl text-emerald-900 flex items-center gap-2">
-                      <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      <span className="truncate">
-                        {promoters.find((p) => p.id === currentUserId)?.full_name || 'Sua Conta'}
-                      </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                        <span>Promotor Responsável</span>
+                        {isPromoterRole && (
+                          <span className="text-[9px] text-[#FF530D] font-bold">🔒 Sua Sessão</span>
+                        )}
+                      </label>
+                      {isPromoterRole ? (
+                        <div className="w-full text-xs font-bold p-2.5 bg-emerald-50/80 border border-emerald-300 rounded-xl text-emerald-900 flex items-center gap-2">
+                          <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate">
+                            {promoters.find((p) => p.id === currentUserId)?.full_name || 'Sua Conta'}
+                          </span>
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedPromoterId}
+                          onChange={(e) => setSelectedPromoterId(e.target.value)}
+                          className="w-full text-xs font-semibold p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
+                        >
+                          {promoters.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
-                  ) : (
-                    <select
-                      value={selectedPromoterId}
-                      onChange={(e) => setSelectedPromoterId(e.target.value)}
-                      className="w-full text-xs font-semibold p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
-                    >
-                      {promoters.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 mb-1 block">
-                    Data da Visita
-                  </label>
-                  <input
-                    type="date"
-                    value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
-                    className="w-full text-xs font-semibold p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 mb-1 block">
-                  Notas Gerais da Rota (Logística)
-                </label>
-                <input
-                  type="text"
-                  value={generalNotes}
-                  onChange={(e) => setGeneralNotes(e.target.value)}
-                  placeholder="Ex: Recepção rápida no intervalo de cirurgia"
-                  className="w-full text-xs p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
-                />
-              </div>
-
-              {/* GIFT / MIMO DISTRIBUTION SECTION */}
-              <div className="bg-[#FDF2E7]/40 p-4 rounded-2xl border border-[#E8D9C8] space-y-3">
-                <div className="flex items-center gap-2">
-                  <GiftIcon className="h-4.5 w-4.5 text-[#FF530D]" />
-                  <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
-                    Distribuição de Brinde ou Amostra 🎁
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
-                      Selecione o Brinde Entregue
-                    </label>
-                    <select
-                      value={selectedGiftId}
-                      onChange={(e) => setSelectedGiftId(e.target.value)}
-                      className="w-full text-xs font-semibold p-2 bg-white border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none cursor-pointer"
-                    >
-                      <option value="">-- Nenhum brinde entregue --</option>
-                      {StorageService.getGifts().map((g) => (
-                        <option key={g.id} value={g.id} disabled={g.stock <= 0}>
-                          {g.name} ({g.stock} disponíveis)
-                        </option>
-                      ))}
-                    </select>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 mb-1 block">
+                        Data da Visita
+                      </label>
+                      <input
+                        type="date"
+                        value={visitDate}
+                        onChange={(e) => setVisitDate(e.target.value)}
+                        className="w-full text-xs font-semibold p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
-                      Quantidade Entregue
+                    <label className="text-[11px] font-bold text-slate-700 mb-1 block">
+                      Notas Gerais da Rota (Logística)
                     </label>
                     <input
-                      type="number"
-                      min={1}
-                      disabled={!selectedGiftId}
-                      value={giftQuantity}
-                      onChange={(e) => setGiftQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full text-xs font-semibold p-2 bg-white border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
+                      type="text"
+                      value={generalNotes}
+                      onChange={(e) => setGeneralNotes(e.target.value)}
+                      placeholder="Ex: Recepção rápida no intervalo de cirurgia"
+                      className="w-full text-xs p-2 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
                     />
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* CONFIDENTIAL INTERNAL MATCH POINT & PROMOTER NOTES */}
-            <div className="bg-[#111111] text-[#FDF2E7] rounded-2xl p-5 border border-[#333333] shadow-md space-y-3 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-[#FBBF3D]/20 text-[#FBBF3D] flex items-center justify-center font-bold">
-                    <Lock className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                      Observações Internas Confidenciais
-                    </h4>
-                    <span className="text-[10px] text-[#FBBF3D] font-bold">
-                      Match Point & Promotor ONLY (Invisível aos Contratantes)
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <textarea
-                rows={3}
-                value={internalAgencyNotes}
-                onChange={(e) => setInternalAgencyNotes(e.target.value)}
-                placeholder="Insira anotações confidenciais da agência sobre o perfil, temperamento do médico, concorrentes presentes ou estratégia de comissão/promotoria..."
-                className="w-full p-3 bg-[#1a1a1a] border border-[#333333] rounded-xl text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-[#FBBF3D] focus:outline-none font-medium"
-              />
-              <p className="text-[10px] text-slate-400">
-                🔒 <strong>Segurança RLS:</strong> Este campo é 100% blindado contra acesso dos contratantes no portal do cliente.
-              </p>
-            </div>
-
-            {/* VISIT PHOTOS & EVIDENCE ATTACHMENT SECTION */}
-            <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-2">
-                    <Camera className="h-4 w-4 text-[#FF530D]" />
-                    Fotos & Evidências da Visita
-                  </h4>
-                  <p className="text-[10px] text-slate-500">
-                    Fachada, recepção, consultório, materiais ou amostras entregues
-                  </p>
-                </div>
-                <span className="text-xs font-extrabold text-[#FF530D] bg-[#FF530D]/10 px-2 py-0.5 rounded-full">
-                  {visitPhotos.length} {visitPhotos.length === 1 ? 'Foto' : 'Fotos'}
-                </span>
-              </div>
-
-              {/* Dropzone & Upload Action */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDraggingPhotos(true);
-                }}
-                onDragLeave={() => setIsDraggingPhotos(false)}
-                onDrop={handlePhotoDrop}
-                onClick={() => {
-                  const el = document.getElementById('input-visit-photos-file') as HTMLInputElement | null;
-                  if (el) el.click();
-                }}
-                className={`border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer ${
-                  isDraggingPhotos
-                    ? 'border-[#FF530D] bg-[#FF530D]/10'
-                    : 'border-[#E8D9C8] hover:border-[#FF530D] bg-[#FDF2E7]/40 hover:bg-[#FDF2E7]'
-                }`}
-              >
-                <input
-                  id="input-visit-photos-file"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  capture="environment"
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={handlePhotosChange}
-                  className="hidden"
-                />
-                <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#111111]">
-                  <Camera className="h-4 w-4 text-[#FF530D]" />
-                  <Upload className="h-4 w-4 text-[#FF530D]" />
-                  <span>Tirar Foto ou Anexar da Galeria</span>
-                </div>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Suporta múltiplas imagens (JPG, PNG, WebP) com compressão automática
-                </p>
-              </div>
-
-              {/* Photos Preview Grid */}
-              {visitPhotos.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-1">
-                  {visitPhotos.map((photo, index) => (
-                    <div
-                      key={index}
-                      className="relative group rounded-xl overflow-hidden aspect-square border-2 border-[#E8D9C8] hover:border-[#FF530D] shadow-2xs bg-slate-900"
-                    >
-                      <img
-                        src={photo}
-                        alt={`Foto da Visita ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActivePhotoLightbox(photo);
-                          }}
-                          className="p-1.5 rounded-full bg-white/90 text-[#111111] hover:bg-white transition-all cursor-pointer"
-                          title="Visualizar em tamanho grande"
+                  {/* GIFT / MIMO DISTRIBUTION SECTION */}
+                  <div className="bg-[#FDF2E7]/40 p-4 rounded-2xl border border-[#E8D9C8] space-y-3">
+                    <div className="flex items-center gap-2">
+                      <GiftIcon className="h-4.5 w-4.5 text-[#FF530D]" />
+                      <span className="text-xs font-black text-[#111111] uppercase tracking-wider">
+                        Distribuição de Brinde ou Amostra 🎁
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
+                          Selecione o Brinde Entregue
+                        </label>
+                        <select
+                          value={selectedGiftId}
+                          onChange={(e) => setSelectedGiftId(e.target.value)}
+                          className="w-full text-xs font-semibold p-2 bg-white border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none cursor-pointer"
                         >
-                          <Eye className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removePhoto(index);
-                          }}
-                          className="p-1.5 rounded-full bg-[#D90000] text-white hover:bg-red-700 transition-all cursor-pointer"
-                          title="Remover foto"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                          <option value="">-- Nenhum brinde entregue --</option>
+                          {StorageService.getGifts().map((g) => (
+                            <option key={g.id} value={g.id} disabled={g.stock <= 0}>
+                              {g.name} ({g.stock} disponíveis)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">
+                          Quantidade Entregue
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          disabled={!selectedGiftId}
+                          value={giftQuantity}
+                          onChange={(e) => setGiftQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full text-xs font-semibold p-2 bg-white border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
+                        />
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {selectedTenantIds.length > 0 && (
+                  <>
+                    {/* CONFIDENTIAL INTERNAL MATCH POINT & PROMOTER NOTES */}
+                    <div className="bg-[#111111] text-[#FDF2E7] rounded-2xl p-5 border border-[#333333] shadow-md space-y-3 relative overflow-hidden">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-lg bg-[#FBBF3D]/20 text-[#FBBF3D] flex items-center justify-center font-bold">
+                            <Lock className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                              Observações Internas Confidenciais
+                            </h4>
+                            <span className="text-[10px] text-[#FBBF3D] font-bold">
+                              Match Point & Promotor ONLY (Invisível aos Contratantes)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <textarea
+                        rows={3}
+                        value={internalAgencyNotes}
+                        onChange={(e) => setInternalAgencyNotes(e.target.value)}
+                        placeholder="Insira anotações confidenciais da agência sobre o perfil, temperamento do médico, concorrentes presentes ou estratégia de comissão/promotoria..."
+                        className="w-full p-3 bg-[#1a1a1a] border border-[#333333] rounded-xl text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-[#FBBF3D] focus:outline-none font-medium"
+                      />
+                      <p className="text-[10px] text-slate-400">
+                        🔒 <strong>Segurança RLS:</strong> Este campo é 100% blindado contra acesso dos contratantes no portal do cliente.
+                      </p>
+                    </div>
+
+                    {/* VISIT PHOTOS & EVIDENCE ATTACHMENT SECTION */}
+                    <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-2">
+                            <Camera className="h-4 w-4 text-[#FF530D]" />
+                            Fotos & Evidências da Visita
+                          </h4>
+                          <p className="text-[10px] text-slate-500">
+                            Fachada, recepção, consultório, materiais ou amostras entregues
+                          </p>
+                        </div>
+                        <span className="text-xs font-extrabold text-[#FF530D] bg-[#FF530D]/10 px-2 py-0.5 rounded-full">
+                          {visitPhotos.length} {visitPhotos.length === 1 ? 'Foto' : 'Fotos'}
+                        </span>
+                      </div>
+
+                      {/* Dropzone & Upload Action */}
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDraggingPhotos(true);
+                        }}
+                        onDragOverCapture={(e) => {
+                          e.preventDefault();
+                        }}
+                        onDragLeave={() => setIsDraggingPhotos(false)}
+                        onDrop={handlePhotoDrop}
+                        onClick={() => {
+                          const el = document.getElementById('input-visit-photos-file') as HTMLInputElement | null;
+                          if (el) el.click();
+                        }}
+                        className={`border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer ${
+                          isDraggingPhotos
+                            ? 'border-[#FF530D] bg-[#FF530D]/10'
+                            : 'border-[#E8D9C8] hover:border-[#FF530D] bg-[#FDF2E7]/40 hover:bg-[#FDF2E7]'
+                        }`}
+                      >
+                        <input
+                          id="input-visit-photos-file"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          capture="environment"
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={handlePhotosChange}
+                          className="hidden"
+                        />
+                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#111111]">
+                          <Camera className="h-4 w-4 text-[#FF530D]" />
+                          <Upload className="h-4 w-4 text-[#FF530D]" />
+                          <span>Tirar Foto ou Anexar da Galeria</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Suporta múltiplas imagens (JPG, PNG, WebP) com compressão automática
+                        </p>
+                      </div>
+
+                      {/* Photos Preview Grid */}
+                      {visitPhotos.length > 0 && (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-1">
+                          {visitPhotos.map((photo, index) => (
+                            <div
+                              key={index}
+                              className="relative group rounded-xl overflow-hidden aspect-square border-2 border-[#E8D9C8] hover:border-[#FF530D] shadow-2xs bg-slate-900"
+                            >
+                              <img
+                                src={photo}
+                                alt={`Foto da Visita ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActivePhotoLightbox(photo);
+                                  }}
+                                  className="p-1.5 rounded-full bg-white/90 text-[#111111] hover:bg-white transition-all cursor-pointer"
+                                  title="Visualizar em tamanho grande"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removePhoto(index);
+                                  }}
+                                  className="p-1.5 rounded-full bg-[#D90000] text-white hover:bg-red-700 transition-all cursor-pointer"
+                                  title="Remover foto"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
           {/* RIGHT COLUMN: Multi-Tenant Representation & Isolated Reports (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Multi-Tenant Selector via Dropdown + Tags (Max 3 limit) */}
-            <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
+            {!selectedVet ? (
+              <div className="bg-white rounded-3xl p-8 border-2 border-dashed border-[#E8D9C8] min-h-[350px] flex flex-col items-center justify-center text-center space-y-4 shadow-2xs">
+                <div className="h-14 w-14 rounded-full bg-[#FDF2E7] text-[#FF530D] flex items-center justify-center animate-pulse">
+                  <UserIcon className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-black text-slate-800 text-sm sm:text-base">Aguardando Seleção de Profissional</h4>
+                  <p className="text-xs text-slate-500 font-medium max-w-xs leading-relaxed">
+                    Selecione um médico-veterinário na busca à esquerda (ou cadastre um novo profissional) para carregar os formulários de check-in e relatórios de campo.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Multi-Tenant Selector via Dropdown + Tags (Max 3 limit) */}
+                <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-[#111111] flex items-center gap-2">
@@ -1230,186 +1220,192 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
             </div>
 
             {/* Individual Feedback Form per Represented Tenant */}
-            <div className="space-y-4">
-              {selectedTenantIds.map((tenantId, index) => {
-                const tenant = tenants.find((t) => t.id === tenantId);
-                const rep = tenantReportsData[tenantId] || {
-                  observations: '',
-                  internal_agency_notes: '',
-                  sentiment: 'positive',
-                  service_interest: '',
-                  critical_action_needed: false
-                };
+            {selectedTenantIds.length > 0 && (
+              <>
+                <div className="space-y-4">
+                  {selectedTenantIds.map((tenantId, index) => {
+                    const tenant = tenants.find((t) => t.id === tenantId);
+                    const rep = tenantReportsData[tenantId] || {
+                      observations: '',
+                      internal_agency_notes: '',
+                      sentiment: 'positive',
+                      service_interest: '',
+                      critical_action_needed: false
+                    };
 
-                return (
-                  <div
-                    key={tenantId}
-                    className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4 relative overflow-hidden transition-all"
-                  >
-                    {/* Color Stripe on the Left */}
-                    <div
-                      className="absolute top-0 left-0 bottom-0 w-2"
-                      style={{ backgroundColor: tenant?.color_theme || '#FF530D' }}
-                    />
+                    return (
+                      <div
+                        key={tenantId}
+                        className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4 relative overflow-hidden transition-all"
+                      >
+                        {/* Color Stripe on the Left */}
+                        <div
+                          className="absolute top-0 left-0 bottom-0 w-2"
+                          style={{ backgroundColor: tenant?.color_theme || '#FF530D' }}
+                        />
 
-                    {/* Report Header */}
-                    <div className="flex items-center justify-between pl-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-1.5">
-                          <FileText className="h-4 w-4 text-[#FF530D]" />
-                          Relatório #{index + 1}: {tenant?.trade_name}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500">
-                          ({tenant?.segment})
-                        </span>
-                      </div>
+                        {/* Report Header */}
+                        <div className="flex items-center justify-between pl-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-[#111111] uppercase tracking-wider flex items-center gap-1.5">
+                              <FileText className="h-4 w-4 text-[#FF530D]" />
+                              Relatório #{index + 1}: {tenant?.trade_name}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500">
+                              ({tenant?.segment})
+                            </span>
+                          </div>
 
-                      <span className="text-[10px] font-mono font-bold text-[#FF530D] bg-[#FDF2E7] px-2 py-0.5 rounded border border-[#E8D9C8]">
-                        RLS ISOLATED
-                      </span>
-                    </div>
-
-                    {/* Sentiment Pills */}
-                    <div className="pl-2 space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-700 block">
-                        Receptividade &amp; Sentimento do Médico:
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateTenantReport(tenantId, 'sentiment', 'positive')}
-                          className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
-                            rep.sentiment === 'positive'
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                          }`}
-                        >
-                          <span>🟢 Positivo / Receptivo</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => updateTenantReport(tenantId, 'sentiment', 'neutral')}
-                          className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
-                            rep.sentiment === 'neutral'
-                              ? 'bg-slate-700 text-white border-slate-700 shadow-xs font-black'
-                              : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                          }`}
-                        >
-                          <span>⚪ Neutro / Em Análise</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => updateTenantReport(tenantId, 'sentiment', 'complaint')}
-                          className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
-                            rep.sentiment === 'complaint'
-                              ? 'bg-[#D90000] text-white border-[#D90000] shadow-xs font-black'
-                              : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
-                          }`}
-                        >
-                          <span>🔴 Reclamação / Crítico</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Service Interest Field with Quick Selection Chips */}
-                    <div className="pl-2 space-y-2">
-                      <label className="text-[11px] font-bold text-slate-700 block">
-                        Serviço / Exame de Maior Interesse:
-                      </label>
-                      <input
-                        type="text"
-                        value={rep.service_interest}
-                        onChange={(e) => updateTenantReport(tenantId, 'service_interest', e.target.value)}
-                        placeholder="Ex: Tomografia 3D, Ecocardiograma Doppler, Hemograma rápido..."
-                        className="w-full text-xs sm:text-sm p-2.5 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:bg-white focus:outline-none font-semibold"
-                      />
-
-                      {/* Quick Service Chips from Tenant's Catalogue */}
-                      {tenant?.services_offered && tenant.services_offered.length > 0 && (
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">
-                            Sugestões Rápidas do Catálogo {tenant.trade_name}:
+                          <span className="text-[10px] font-mono font-bold text-[#FF530D] bg-[#FDF2E7] px-2 py-0.5 rounded border border-[#E8D9C8]">
+                            RLS ISOLATED
                           </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {tenant.services_offered.map((srv, srvIdx) => (
-                              <button
-                                key={srvIdx}
-                                type="button"
-                                onClick={() => {
-                                  const current = rep.service_interest ? rep.service_interest + ', ' : '';
-                                  if (!rep.service_interest.includes(srv)) {
-                                    updateTenantReport(tenantId, 'service_interest', current + srv);
-                                  }
-                                }}
-                                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#FDF2E7] hover:text-[#FF530D] text-slate-700 transition-colors border border-slate-200 cursor-pointer text-left"
-                                title="Clique para adicionar ao campo de interesse"
-                              >
-                                + {srv}
-                              </button>
-                            ))}
+                        </div>
+
+                        {/* Sentiment Pills */}
+                        <div className="pl-2 space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            Receptividade &amp; Sentimento do Médico:
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateTenantReport(tenantId, 'sentiment', 'positive')}
+                              className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+                                rep.sentiment === 'positive'
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                            >
+                              <span>🟢 Positivo / Receptivo</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => updateTenantReport(tenantId, 'sentiment', 'neutral')}
+                              className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+                                rep.sentiment === 'neutral'
+                                  ? 'bg-slate-700 text-white border-slate-700 shadow-xs font-black'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                              }`}
+                            >
+                              <span>⚪ Neutro / Em Análise</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => updateTenantReport(tenantId, 'sentiment', 'complaint')}
+                              className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+                                rep.sentiment === 'complaint'
+                                  ? 'bg-[#D90000] text-white border-[#D90000] shadow-xs font-black'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                              }`}
+                            >
+                              <span>🔴 Reclamação / Crítico</span>
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Observations (Visible to Tenant) */}
-                    <div className="pl-2 space-y-1">
-                      <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                        <span>Observações & Feedback Coletado:</span>
-                        <span className="text-[10px] text-[#FF530D] font-bold">* Visível para o contratante {tenant?.trade_name}</span>
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={rep.observations}
-                        onChange={(e) => updateTenantReport(tenantId, 'observations', e.target.value)}
-                        placeholder={`Descreva o retorno do Dr(a). ${selectedVet?.full_name || ''} sobre os serviços do ${tenant?.trade_name}...`}
-                        className="w-full text-xs sm:text-sm p-2.5 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:bg-white focus:outline-none"
-                        required
-                      />
-                    </div>
+                        {/* Service Interest Field with Quick Selection Chips */}
+                        <div className="pl-2 space-y-2">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            Serviço / Exame de Maior Interesse:
+                          </label>
+                          <input
+                            type="text"
+                            value={rep.service_interest}
+                            onChange={(e) => updateTenantReport(tenantId, 'service_interest', e.target.value)}
+                            placeholder="Ex: Tomografia 3D, Ecocardiograma Doppler, Hemograma rápido..."
+                            className="w-full text-xs sm:text-sm p-2.5 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:bg-white focus:outline-none font-semibold"
+                          />
 
-                    {/* Critical Action Flag */}
-                    <div className="pl-2 pt-1">
-                      <label className="flex items-center gap-2 cursor-pointer bg-rose-50/60 p-2.5 rounded-xl border border-rose-200 hover:bg-rose-50 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={rep.critical_action_needed}
-                          onChange={(e) => updateTenantReport(tenantId, 'critical_action_needed', e.target.checked)}
-                          className="h-4 w-4 text-[#D90000] rounded focus:ring-[#D90000]"
-                        />
-                        <div className="text-xs">
-                          <span className="font-bold text-[#D90000] flex items-center gap-1">
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                            Marcar como Tratativa Crítica Imediata
-                          </span>
-                          <p className="text-[10px] text-slate-600">
-                            Dispara alerta de urgência no painel do contratante para suporte imediato.
-                          </p>
+                          {/* Quick Service Chips from Tenant's Catalogue */}
+                          {tenant?.services_offered && tenant.services_offered.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">
+                                Sugestões Rápidas do Catálogo {tenant.trade_name}:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {tenant.services_offered.map((srv, srvIdx) => (
+                                  <button
+                                    key={srvIdx}
+                                    type="button"
+                                    onClick={() => {
+                                      const current = rep.service_interest ? rep.service_interest + ', ' : '';
+                                      if (!rep.service_interest.includes(srv)) {
+                                        updateTenantReport(tenantId, 'service_interest', current + srv);
+                                      }
+                                    }}
+                                    className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#FDF2E7] hover:text-[#FF530D] text-slate-700 transition-colors border border-slate-200 cursor-pointer text-left"
+                                    title="Clique para adicionar ao campo de interesse"
+                                  >
+                                    + {srv}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </label>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
 
-            {/* Submit Button */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                id="btn-submit-visit"
-                className="w-full py-3.5 px-6 bg-[#FF530D] hover:bg-[#e04505] text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-[#FF530D]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Send className="h-5 w-5" />
-                Finalizar Check-in & Disparar Régua de Follow-up
-              </button>
-              <p className="text-center text-[11px] text-slate-500 mt-2">
-                ⚡ Ao salvar, o sistema agenda automaticamente tarefas em D+7 e D+14 para cada contratante representado.
-              </p>
-            </div>
-          </div>
+                        {/* Observations (Visible to Tenant) */}
+                        <div className="pl-2 space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                            <span>Observações & Feedback Coletado:</span>
+                            <span className="text-[10px] text-[#FF530D] font-bold">* Visível para o contratante {tenant?.trade_name}</span>
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={rep.observations}
+                            onChange={(e) => updateTenantReport(tenantId, 'observations', e.target.value)}
+                            placeholder={`Descreva o retorno do Dr(a). ${selectedVet?.full_name || ''} sobre os serviços do ${tenant?.trade_name}...`}
+                            className="w-full text-xs sm:text-sm p-2.5 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:bg-white focus:outline-none"
+                            required
+                          />
+                        </div>
+
+                        {/* Critical Action Flag */}
+                        <div className="pl-2 pt-1">
+                          <label className="flex items-center gap-2 cursor-pointer bg-rose-50/60 p-2.5 rounded-xl border border-rose-200 hover:bg-rose-50 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={rep.critical_action_needed}
+                              onChange={(e) => updateTenantReport(tenantId, 'critical_action_needed', e.target.checked)}
+                              className="h-4 w-4 text-[#D90000] rounded focus:ring-[#D90000]"
+                            />
+                            <div className="text-xs">
+                              <span className="font-bold text-[#D90000] flex items-center gap-1">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                Marcar como Tratativa Crítica Imediata
+                              </span>
+                              <p className="text-[10px] text-slate-600">
+                                Dispara alerta de urgência no painel do contratante para suporte imediato.
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    id="btn-submit-visit"
+                    className="w-full py-3.5 px-6 bg-[#FF530D] hover:bg-[#e04505] text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-[#FF530D]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send className="h-5 w-5" />
+                    Finalizar Check-in & Disparar Régua de Follow-up
+                  </button>
+                  <p className="text-center text-[11px] text-slate-500 mt-2">
+                    ⚡ Ao salvar, o sistema agenda automaticamente tarefas em D+7 e D+14 para cada contratante representado.
+                  </p>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
         </form>
       )}
 

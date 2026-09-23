@@ -146,7 +146,7 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
       const map = new window.google.maps.Map(mapRef.current, {
         center: defaultCenter,
         zoom: 4,
-        styles: [
+        styles: [], /* styles: [
           {
             "elementType": "geometry",
             "stylers": [{ "color": "#f5f5f5" }]
@@ -208,7 +208,7 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
             "elementType": "labels.text.fill",
             "stylers": [{ "color": "#9e9e9e" }]
           }
-        ],
+        ], */
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: true
