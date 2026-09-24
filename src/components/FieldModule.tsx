@@ -85,7 +85,9 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   const [activeModuleMode, setActiveModuleMode] = useState<'checkin' | 'directory'>('checkin');
 
   // Search & Autocomplete
-  const [searchQuery, setSearchQuery] = useState('');
+  const [directorySearchQuery, setDirectorySearchQuery] = useState('');
+  const [checkinSearchQuery, setCheckinSearchQuery] = useState(vets[0] ? vets[0].full_name : '');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedVet, setSelectedVet] = useState<Veterinarian | null>(vets[0] || null);
   const [isNewVetModalOpen, setIsNewVetModalOpen] = useState(false);
 
@@ -116,6 +118,15 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
       setSelectedPromoterId(currentUserId);
     }
   }, [currentUserId]);
+
+  // Keep checkinSearchQuery in sync with selectedVet changes
+  useEffect(() => {
+    if (selectedVet) {
+      setCheckinSearchQuery(selectedVet.full_name);
+    } else {
+      setCheckinSearchQuery('');
+    }
+  }, [selectedVet]);
 
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [generalNotes, setGeneralNotes] = useState('');
@@ -248,23 +259,39 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
     setVisitPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Filtered Vets for Autocomplete
+  // Filtered Vets for Autocomplete (Accent-insensitive and prefix-insensitive matching)
   const filteredVets =
-    searchQuery.trim() === ''
+    checkinSearchQuery.trim() === '' || !showSuggestions
       ? []
-      : vets.filter((v) => {
-          const query = searchQuery.toLowerCase();
+      : (vets || []).filter((v) => {
+          // Normalize functions for perfect search matching
+          const normalize = (str: string) =>
+            str
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "") // remove accents
+              .replace(/^(dr\.|dra\.|dr|dra)\s+/i, "") // remove Dr./Dra. title prefixes
+              .trim();
+
+          const queryNormalized = normalize(checkinSearchQuery);
+          
+          // If the query is exactly the selected vet's name, don't show suggestion dropdown
+          if (selectedVet && queryNormalized === normalize(selectedVet.full_name)) {
+            return false;
+          }
+
           return (
-            v.full_name.toLowerCase().includes(query) ||
-            v.crmv.toLowerCase().includes(query) ||
-            v.workplace_name.toLowerCase().includes(query) ||
-            v.specialty.toLowerCase().includes(query)
+            normalize(v.full_name).includes(queryNormalized) ||
+            normalize(v.crmv).includes(queryNormalized) ||
+            normalize(v.workplace_name).includes(queryNormalized) ||
+            normalize(v.specialty).includes(queryNormalized)
           );
         });
 
   const handleSelectVet = (vet: Veterinarian) => {
     setSelectedVet(vet);
-    setSearchQuery('');
+    setCheckinSearchQuery(vet.full_name);
+    setShowSuggestions(false);
   };
 
   const handleOpenDossier = (vet: Veterinarian) => {
@@ -274,6 +301,8 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
 
   const handleStartCheckinFromDossier = (vet: Veterinarian) => {
     setSelectedVet(vet);
+    setCheckinSearchQuery(vet.full_name);
+    setShowSuggestions(false);
     setIsDossierOpen(false);
     setActiveModuleMode('checkin');
   };
@@ -281,7 +310,8 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   const handleCreateNewVetSuccess = (newVetData: Omit<Veterinarian, 'id' | 'created_at' | 'updated_at'>) => {
     const created = onAddNewVet(newVetData);
     setSelectedVet(created);
-    setSearchQuery('');
+    setCheckinSearchQuery(created.full_name);
+    setShowSuggestions(false);
   };
 
   const handleAddTenantFromDropdown = (tenantId: string) => {
@@ -562,8 +592,8 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
               <input
                 type="text"
                 placeholder="Buscar por nome, CRMV, clínica ou bairro..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={directorySearchQuery}
+                onChange={(e) => setDirectorySearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-[#FDF2E7]/50 border border-[#E8D9C8] rounded-xl text-xs sm:text-sm font-semibold text-[#111111] focus:ring-2 focus:ring-[#FF530D] focus:outline-none"
               />
             </div>
@@ -581,8 +611,8 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {vets
               .filter((v) => {
-                if (!searchQuery.trim()) return true;
-                const q = searchQuery.toLowerCase();
+                if (!directorySearchQuery.trim()) return true;
+                const q = directorySearchQuery.toLowerCase();
                 return (
                   v.full_name.toLowerCase().includes(q) ||
                   v.crmv.toLowerCase().includes(q) ||
@@ -723,15 +753,34 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
               </div>
 
               <div className="relative">
-                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
                 <input
                   id="input-search-vet"
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={checkinSearchQuery}
+                  onChange={(e) => {
+                    setCheckinSearchQuery(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
                   placeholder="Digite CRMV ou Nome (Ex: CRMV-SP 45890 ou Dra. Camila)..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-xs sm:text-sm font-semibold text-[#111111] placeholder-slate-400 focus:ring-2 focus:ring-[#FF530D] focus:bg-white focus:outline-none"
+                  className="w-full pl-10 pr-10 py-2.5 bg-[#FDF2E7]/60 border border-[#E8D9C8] rounded-xl text-xs sm:text-sm font-semibold text-[#111111] placeholder-slate-400 focus:ring-2 focus:ring-[#FF530D] focus:bg-white focus:outline-none"
                 />
+
+                {checkinSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckinSearchQuery('');
+                      setSelectedVet(null);
+                      setShowSuggestions(true);
+                    }}
+                    className="absolute right-3 top-3 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+                    title="Limpar seleção"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
 
                 {/* Autocomplete Dropdown */}
                 {filteredVets.length > 0 && (
