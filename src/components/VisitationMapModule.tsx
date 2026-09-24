@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   MapPin,
   TrendingUp,
@@ -63,6 +63,15 @@ interface VisitationMapModuleProps {
   promoters: PromoterUser[];
 }
 
+interface HeatmapRegion {
+  name: string;
+  city: string;
+  neighborhood: string;
+  lat: number;
+  lng: number;
+  visitsCount: number;
+}
+
 export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
   visits,
   vets,
@@ -85,6 +94,141 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   const [simCityIndex, setSimCityIndex] = useState(0);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Heatmap interactive categories state
+  const [expandedCategory, setExpandedCategory] = useState<'hot' | 'warm' | 'cold' | null>(null);
+
+  // Component-wide filteredVisits calculation
+  const filteredVisits = useMemo(() => {
+    return (visits || []).filter((v) => {
+      // Promoter filter
+      if (selectedPromoterId !== 'ALL' && v.promoter_id !== selectedPromoterId) {
+        return false;
+      }
+
+      // Tenant/Clinica filter
+      if (selectedTenantId !== 'ALL') {
+        const matchingReports = v.reports || [];
+        const hasTenantReport = matchingReports.some(r => r.tenant_id === selectedTenantId);
+        if (!hasTenantReport) return false;
+      }
+
+      // Timeframe filter
+      if (selectedTimeframe !== 'ALL') {
+        const visitDate = new Date(v.visit_date);
+        if (isNaN(visitDate.getTime())) {
+          return false;
+        }
+        const diffTime = Math.abs(new Date().getTime() - visitDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > parseInt(selectedTimeframe, 10)) {
+          return false;
+        }
+      }
+
+      // Search term
+      if (searchTerm) {
+        const vet = vets.find((vet) => vet.id === v.veterinarian_id);
+        const vetName = vet?.full_name?.toLowerCase() || '';
+        const clinicName = vet?.workplace_name?.toLowerCase() || '';
+        const neighborhood = vet?.neighborhood?.toLowerCase() || '';
+        const term = searchTerm.toLowerCase();
+        if (!vetName.includes(term) && !clinicName.includes(term) && !neighborhood.includes(term)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [visits, selectedPromoterId, selectedTenantId, selectedTimeframe, searchTerm, vets]);
+
+  // Group visits into geographical regions (neighborhoods)
+  const groupedRegions = useMemo(() => {
+    const groups: { [key: string]: { latSum: number; lngSum: number; count: number; neighborhood: string; city: string } } = {};
+
+    filteredVisits.forEach((v) => {
+      const vet = vets.find((vet) => vet.id === v.veterinarian_id);
+      if (!vet) return;
+
+      const neighborhood = vet.neighborhood || 'Outro';
+      const city = vet.city || 'São Paulo';
+      const key = `${neighborhood}, ${city}`;
+
+      let lat = v.location_lat || vet.location_lat;
+      let lng = v.location_lng || vet.location_lng;
+
+      if (!lat || !lng) {
+        // Fallback georeference
+        const stateHash = (vet.full_name || '').charCodeAt(0) % 5; // Use 5 as arbitrary hash or simple fallback
+        const hub = BRAZIL_HUBS[stateHash] || BRAZIL_HUBS[0];
+        const jitterLat = (Math.random() - 0.5) * 0.08;
+        const jitterLng = (Math.random() - 0.5) * 0.08;
+        lat = hub.lat + jitterLat;
+        lng = hub.lng + jitterLng;
+      }
+
+      if (!groups[key]) {
+        groups[key] = {
+          latSum: 0,
+          lngSum: 0,
+          count: 0,
+          neighborhood,
+          city
+        };
+      }
+
+      groups[key].latSum += lat;
+      groups[key].lngSum += lng;
+      groups[key].count += 1;
+    });
+
+    const regions: HeatmapRegion[] = Object.keys(groups).map((key) => {
+      const g = groups[key];
+      return {
+        name: key,
+        neighborhood: g.neighborhood,
+        city: g.city,
+        lat: g.latSum / g.count,
+        lng: g.lngSum / g.count,
+        visitsCount: g.count
+      };
+    });
+
+    return regions.sort((a, b) => b.visitsCount - a.visitsCount);
+  }, [filteredVisits, vets]);
+
+  // Categorize regions into Quente, Morna, and Fria
+  const categories = useMemo(() => {
+    const hot = groupedRegions.filter((r) => r.visitsCount >= 5);
+    const warm = groupedRegions.filter((r) => r.visitsCount >= 2 && r.visitsCount < 5);
+    const cold = groupedRegions.filter((r) => r.visitsCount < 2);
+    return { hot, warm, cold };
+  }, [groupedRegions]);
+
+  // Pan and smooth zoom directly to selected region with visual highlight circle
+  const handleGoToRegion = (region: HeatmapRegion) => {
+    if (!mapInstance || !window.google || !window.google.maps) return;
+    
+    mapInstance.panTo({ lat: region.lat, lng: region.lng });
+    mapInstance.setZoom(14); // Perfect neighborhood scale zoom
+
+    // Premium visual highlight effect: glowing fading circle
+    const highlightCircle = new window.google.maps.Circle({
+      strokeColor: '#FF530D',
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: '#FF530D',
+      fillOpacity: 0.18,
+      map: mapInstance,
+      center: { lat: region.lat, lng: region.lng },
+      radius: 400
+    });
+
+    // Animate highlight away elegantly
+    setTimeout(() => {
+      highlightCircle.setMap(null);
+    }, 2500);
+  };
 
   // Script loading
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
@@ -226,48 +370,6 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
     if (!mapInstance) return;
 
     try {
-      // 1. Filter the visits based on criteria
-      const filteredVisits = visits.filter((v) => {
-        // Promoter filter
-        if (selectedPromoterId !== 'ALL' && v.promoter_id !== selectedPromoterId) {
-          return false;
-        }
-
-        // Tenant/Clinica filter
-        if (selectedTenantId !== 'ALL') {
-          const matchingReports = v.reports || [];
-          const hasTenantReport = matchingReports.some(r => r.tenant_id === selectedTenantId);
-          if (!hasTenantReport) return false;
-        }
-
-        // Timeframe filter
-        if (selectedTimeframe !== 'ALL') {
-          const visitDate = new Date(v.visit_date);
-          if (isNaN(visitDate.getTime())) {
-            return false;
-          }
-          const diffTime = Math.abs(new Date().getTime() - visitDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          if (diffDays > parseInt(selectedTimeframe, 10)) {
-            return false;
-          }
-        }
-
-        // Search term
-        if (searchTerm) {
-          const vet = vets.find((vet) => vet.id === v.veterinarian_id);
-          const vetName = vet?.full_name?.toLowerCase() || '';
-          const clinicName = vet?.workplace_name?.toLowerCase() || '';
-          const neighborhood = vet?.neighborhood?.toLowerCase() || '';
-          const term = searchTerm.toLowerCase();
-          if (!vetName.includes(term) && !clinicName.includes(term) && !neighborhood.includes(term)) {
-            return false;
-          }
-        }
-
-        return true;
-      });
-
       // 2. Clear old markers
       markers.forEach((m) => m.setMap(null));
       setMarkers([]);
@@ -658,28 +760,140 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
 
           {/* Color Legend */}
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Legenda de Temperatura</span>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-slate-600">
-                <span className="flex items-center gap-1.5 font-bold">
-                  <span className="h-3.5 w-3.5 rounded bg-red-500 inline-block" />
-                  <span>Região Quente (Alta Densidade)</span>
-                </span>
-                <span className="font-mono text-[10px] text-red-600 font-extrabold">&gt; 15 visitas</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Legenda de Temperatura</span>
+              <span className="text-[9px] bg-[#FF530D]/10 text-[#FF530D] px-1.5 py-0.5 rounded-xs font-bold uppercase">Interativo ⚡</span>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-tight">
+              Clique em uma temperatura para listar as regiões e navegar automaticamente até elas no mapa:
+            </p>
+
+            <div className="space-y-1.5 pt-1">
+              {/* HOT CATEGORY */}
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-3xs">
+                <button
+                  type="button"
+                  onClick={() => setExpandedCategory(expandedCategory === 'hot' ? null : 'hot')}
+                  className={`w-full flex items-center justify-between p-2.5 text-[11px] font-bold text-left hover:bg-red-50/40 transition-colors cursor-pointer ${expandedCategory === 'hot' ? 'bg-red-50/70 text-red-950 border-b border-red-100' : 'text-slate-700'}`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full bg-red-500 inline-block animate-pulse shrink-0" />
+                    <span>🔥 Quente (Alta Densidade)</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="font-mono text-[9px] text-red-600 font-extrabold bg-red-100/60 px-1 py-0.5 rounded">&gt;= 5 visitas</span>
+                    <span className="text-[10px] font-extrabold text-slate-400">({categories.hot.length})</span>
+                  </div>
+                </button>
+                {expandedCategory === 'hot' && (
+                  <div className="p-2 bg-slate-50/50 divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    {categories.hot.length === 0 ? (
+                      <p className="text-[10px] italic text-slate-400 p-1 text-center">Nenhuma região quente ativa no momento</p>
+                    ) : (
+                      categories.hot.map((reg) => (
+                        <button
+                          key={reg.name}
+                          type="button"
+                          onClick={() => handleGoToRegion(reg)}
+                          className="w-full text-left py-1.5 px-2 rounded-lg hover:bg-red-50 hover:text-red-900 transition-all flex items-center justify-between text-xs text-slate-700 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1 font-bold truncate">
+                            <MapPin className="h-3 w-3 text-red-500 shrink-0" />
+                            <span className="truncate">{reg.neighborhood}</span>
+                          </span>
+                          <span className="bg-red-100 text-red-900 font-mono text-[9px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0">
+                            {reg.visitsCount} visitas
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-600">
-                <span className="flex items-center gap-1.5 font-bold">
-                  <span className="h-3.5 w-3.5 rounded bg-yellow-400 inline-block" />
-                  <span>Região Morna (Média Densidade)</span>
-                </span>
-                <span className="font-mono text-[10px] text-yellow-600 font-extrabold">5-15 visitas</span>
+
+              {/* WARM CATEGORY */}
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-3xs">
+                <button
+                  type="button"
+                  onClick={() => setExpandedCategory(expandedCategory === 'warm' ? null : 'warm')}
+                  className={`w-full flex items-center justify-between p-2.5 text-[11px] font-bold text-left hover:bg-amber-50/40 transition-colors cursor-pointer ${expandedCategory === 'warm' ? 'bg-amber-50/70 text-amber-950 border-b border-amber-100' : 'text-slate-700'}`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full bg-amber-500 inline-block shrink-0" />
+                    <span>🌤️ Morna (Média Densidade)</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="font-mono text-[9px] text-amber-600 font-extrabold bg-amber-100/60 px-1 py-0.5 rounded">2-4 visitas</span>
+                    <span className="text-[10px] font-extrabold text-slate-400">({categories.warm.length})</span>
+                  </div>
+                </button>
+                {expandedCategory === 'warm' && (
+                  <div className="p-2 bg-slate-50/50 divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    {categories.warm.length === 0 ? (
+                      <p className="text-[10px] italic text-slate-400 p-1 text-center">Nenhuma região morna ativa no momento</p>
+                    ) : (
+                      categories.warm.map((reg) => (
+                        <button
+                          key={reg.name}
+                          type="button"
+                          onClick={() => handleGoToRegion(reg)}
+                          className="w-full text-left py-1.5 px-2 rounded-lg hover:bg-amber-50 hover:text-amber-900 transition-all flex items-center justify-between text-xs text-slate-700 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1 font-bold truncate">
+                            <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+                            <span className="truncate">{reg.neighborhood}</span>
+                          </span>
+                          <span className="bg-amber-100 text-amber-900 font-mono text-[9px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0">
+                            {reg.visitsCount} visitas
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-600">
-                <span className="flex items-center gap-1.5 font-bold">
-                  <span className="h-3.5 w-3.5 rounded bg-blue-500 inline-block" />
-                  <span>Região Fria (Baixa Densidade)</span>
-                </span>
-                <span className="font-mono text-[10px] text-blue-600 font-extrabold">&lt; 5 visitas</span>
+
+              {/* COLD CATEGORY */}
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-3xs">
+                <button
+                  type="button"
+                  onClick={() => setExpandedCategory(expandedCategory === 'cold' ? null : 'cold')}
+                  className={`w-full flex items-center justify-between p-2.5 text-[11px] font-bold text-left hover:bg-blue-50/40 transition-colors cursor-pointer ${expandedCategory === 'cold' ? 'bg-blue-50/70 text-blue-950 border-b border-blue-100' : 'text-slate-700'}`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full bg-blue-500 inline-block shrink-0" />
+                    <span>❄️ Fria (Baixa Densidade)</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="font-mono text-[9px] text-blue-600 font-extrabold bg-blue-100/60 px-1 py-0.5 rounded">&lt; 2 visitas</span>
+                    <span className="text-[10px] font-extrabold text-slate-400">({categories.cold.length})</span>
+                  </div>
+                </button>
+                {expandedCategory === 'cold' && (
+                  <div className="p-2 bg-slate-50/50 divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                    {categories.cold.length === 0 ? (
+                      <p className="text-[10px] italic text-slate-400 p-1 text-center">Nenhuma região fria ativa no momento</p>
+                    ) : (
+                      categories.cold.map((reg) => (
+                        <button
+                          key={reg.name}
+                          type="button"
+                          onClick={() => handleGoToRegion(reg)}
+                          className="w-full text-left py-1.5 px-2 rounded-lg hover:bg-blue-50 hover:text-blue-900 transition-all flex items-center justify-between text-xs text-slate-700 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1 font-bold truncate">
+                            <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                            <span className="truncate">{reg.neighborhood}</span>
+                          </span>
+                          <span className="bg-blue-100 text-blue-900 font-mono text-[9px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0">
+                            {reg.visitsCount} visita
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
