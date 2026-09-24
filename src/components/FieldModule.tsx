@@ -81,14 +81,31 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   onSaveVisit,
   onAddNewVet
 }) => {
+  // Safe date parser to avoid timezone shifts and 'Invalid Date' errors
+  const formatDateSafe = (dateString?: string) => {
+    if (!dateString) return 'Sem data';
+    try {
+      const hasT = dateString.includes('T');
+      const d = new Date(hasT ? dateString : dateString + 'T12:00:00');
+      if (isNaN(d.getTime())) {
+        const direct = new Date(dateString);
+        if (isNaN(direct.getTime())) return dateString || 'Sem data';
+        return direct.toLocaleDateString('pt-BR');
+      }
+      return d.toLocaleDateString('pt-BR');
+    } catch {
+      return dateString || 'Sem data';
+    }
+  };
+
   // Mode: 'checkin' | 'directory'
   const [activeModuleMode, setActiveModuleMode] = useState<'checkin' | 'directory'>('checkin');
 
   // Search & Autocomplete
   const [directorySearchQuery, setDirectorySearchQuery] = useState('');
-  const [checkinSearchQuery, setCheckinSearchQuery] = useState(vets[0] ? vets[0].full_name : '');
+  const [checkinSearchQuery, setCheckinSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedVet, setSelectedVet] = useState<Veterinarian | null>(vets[0] || null);
+  const [selectedVet, setSelectedVet] = useState<Veterinarian | null>(null);
   const [isNewVetModalOpen, setIsNewVetModalOpen] = useState(false);
 
   // Dossier Modal State
@@ -260,33 +277,37 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
   };
 
   // Filtered Vets for Autocomplete (Accent-insensitive and prefix-insensitive matching)
-  const filteredVets =
-    checkinSearchQuery.trim() === '' || !showSuggestions
-      ? []
-      : (vets || []).filter((v) => {
-          // Normalize functions for perfect search matching
-          const normalize = (str: string) =>
-            str
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "") // remove accents
-              .replace(/^(dr\.|dra\.|dr|dra)\s+/i, "") // remove Dr./Dra. title prefixes
-              .trim();
+  const filteredVets = !showSuggestions
+    ? []
+    : (vets || []).filter((v) => {
+        // Normalize functions for perfect search matching
+        const normalize = (str: string) =>
+          str
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // remove accents
+            .replace(/^(dr\.|dra\.|dr|dra)\s+/i, "") // remove Dr./Dra. title prefixes
+            .trim();
 
-          const queryNormalized = normalize(checkinSearchQuery);
-          
-          // If the query is exactly the selected vet's name, don't show suggestion dropdown
-          if (selectedVet && queryNormalized === normalize(selectedVet.full_name)) {
-            return false;
-          }
+        const queryNormalized = normalize(checkinSearchQuery);
+        
+        // If query is empty, show all veterinarians as list
+        if (queryNormalized === '') {
+          return true;
+        }
 
-          return (
-            normalize(v.full_name).includes(queryNormalized) ||
-            normalize(v.crmv).includes(queryNormalized) ||
-            normalize(v.workplace_name).includes(queryNormalized) ||
-            normalize(v.specialty).includes(queryNormalized)
-          );
-        });
+        // If the query is exactly the selected vet's name, don't show suggestion dropdown
+        if (selectedVet && queryNormalized === normalize(selectedVet.full_name)) {
+          return false;
+        }
+
+        return (
+          normalize(v.full_name).includes(queryNormalized) ||
+          normalize(v.crmv).includes(queryNormalized) ||
+          normalize(v.workplace_name).includes(queryNormalized) ||
+          normalize(v.specialty).includes(queryNormalized)
+        );
+      });
 
   const handleSelectVet = (vet: Veterinarian) => {
     setSelectedVet(vet);
@@ -677,7 +698,7 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                               <span>Última Visita:</span>
                             </span>
                             <span className="bg-emerald-200/70 text-emerald-900 px-1.5 py-0.5 rounded font-extrabold text-[10px]">
-                              {new Date(lastVisit.visit_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                              {formatDateSafe(lastVisit.visit_date)}
                             </span>
                           </div>
                           <div className="font-bold text-slate-700 text-xs truncate flex items-center justify-between gap-1">

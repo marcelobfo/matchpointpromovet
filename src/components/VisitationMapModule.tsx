@@ -320,7 +320,7 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
 
         const marker = new window.google.maps.Marker({
           position: { lat, lng },
-          map: showHeatmap ? null : mapInstance, // hide markers if only heatmap is requested, or show both
+          map: mapInstance, // Always show indicators to overlay on top of the glowing heat zones
           icon: pinIcon,
           title: vet.workplace_name || vet.full_name
         });
@@ -366,8 +366,8 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
         const heatmap = new window.google.maps.visualization.HeatmapLayer({
           data: heatmapPoints,
           map: mapInstance,
-          radius: 35,
-          opacity: 0.85,
+          radius: 45, // Slightly larger radius for beautiful glowing visual spots
+          opacity: 0.9,
           gradient: [
             'rgba(0, 255, 255, 0)',
             'rgba(0, 255, 255, 1)',
@@ -387,6 +387,34 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
           ]
         });
         setHeatmapInstance(heatmap);
+      }
+
+      // 5. Fit bounds to the visible visits so it starts perfectly positioned and focused
+      if (filteredVisits.length > 0 && window.google && window.google.maps) {
+        const bounds = new window.google.maps.LatLngBounds();
+        let validCoordsCount = 0;
+        filteredVisits.forEach((v) => {
+          const vet = vets.find((vet) => vet.id === v.veterinarian_id);
+          if (!vet) return;
+          const lat = v.location_lat || vet.location_lat;
+          const lng = v.location_lng || vet.location_lng;
+          if (lat && lng) {
+            bounds.extend(new window.google.maps.LatLng(lat, lng));
+            validCoordsCount++;
+          }
+        });
+
+        if (validCoordsCount > 0) {
+          mapInstance.fitBounds(bounds);
+          
+          // Limit zoom on fitBounds to avoid excessive zoom-in if points are tightly clustered
+          const listener = window.google.maps.event.addListener(mapInstance, 'bounds_changed', () => {
+            if (mapInstance.getZoom() > 13) {
+              mapInstance.setZoom(13);
+            }
+            window.google.maps.event.removeListener(listener);
+          });
+        }
       }
     } catch (err) {
       console.warn("Failed to update Google Maps data layers:", err);

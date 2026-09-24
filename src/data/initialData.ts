@@ -281,34 +281,169 @@ export const INITIAL_VETS: Veterinarian[] = [
 ];
 
 export const INITIAL_VISITS: Visit[] = [
+  // Cluster A: Jardim Paulista (Dra. Camila)
   {
-    id: 'visit-mova-001',
+    id: 'visit-jp-001',
     promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-camila-silveira',
+    visit_date: '2026-09-01',
+    check_in_timestamp: '2026-09-01T10:00:00Z',
+    location_lat: -23.5701,
+    location_lng: -46.6534,
+    workplace_name_snapshot: 'Hospital Veterinário PetCare Jardim Paulista',
+    general_notes: 'Primeira visita de ciclo. Alinhamento sobre novos laudos.',
+    photos: [],
+    created_at: '2026-09-01T10:00:00Z'
+  },
+  {
+    id: 'visit-jp-002',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-camila-silveira',
+    visit_date: '2026-09-05',
+    check_in_timestamp: '2026-09-05T14:30:00Z',
+    location_lat: -23.5705,
+    location_lng: -46.6530,
+    workplace_name_snapshot: 'Hospital Veterinário PetCare Jardim Paulista',
+    general_notes: 'Entrega de blocos de requisição de exames.',
+    photos: [],
+    created_at: '2026-09-05T14:30:00Z'
+  },
+  {
+    id: 'visit-jp-003',
+    promoter_id: 'user-promoter-juliana',
     veterinarian_id: 'vet-camila-silveira',
     visit_date: '2026-09-10',
     check_in_timestamp: '2026-09-10T14:35:00Z',
     location_lat: -23.5701,
     location_lng: -46.6534,
     workplace_name_snapshot: 'Hospital Veterinário PetCare Jardim Paulista',
-    general_notes: 'Visita presencial no intervalo cirúrgico da tarde. Excelente receptividade.',
+    general_notes: 'Apresentação técnica sobre Tomografia Computadorizada.',
     photos: [],
     created_at: '2026-09-10T14:35:00Z'
   },
   {
-    id: 'visit-mova-002',
+    id: 'visit-jp-004',
     promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-camila-silveira',
+    visit_date: '2026-09-15',
+    check_in_timestamp: '2026-09-15T15:10:00Z',
+    location_lat: -23.5698,
+    location_lng: -46.6538,
+    workplace_name_snapshot: 'Hospital Veterinário PetCare Jardim Paulista',
+    general_notes: 'Entrega de amostras de convênios novos.',
+    photos: [],
+    created_at: '2026-09-15T15:10:00Z'
+  },
+  {
+    id: 'visit-jp-005',
+    promoter_id: 'user-promoter-fernanda',
+    veterinarian_id: 'vet-camila-silveira',
+    visit_date: '2026-09-18',
+    check_in_timestamp: '2026-09-18T11:00:00Z',
+    location_lat: -23.5702,
+    location_lng: -46.6535,
+    workplace_name_snapshot: 'Hospital Veterinário PetCare Jardim Paulista',
+    general_notes: 'Retorno para tirar dúvidas sobre coleta domiciliar.',
+    photos: [],
+    created_at: '2026-09-18T11:00:00Z'
+  },
+
+  // Cluster B: Moema (Dr. Rodrigo)
+  {
+    id: 'visit-mo-001',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-rodrigo-prado',
+    visit_date: '2026-09-02',
+    check_in_timestamp: '2026-09-02T11:00:00Z',
+    location_lat: -23.6012,
+    location_lng: -46.6625,
+    workplace_name_snapshot: 'Clínica e Hospital Veterinário VetLife Moema',
+    general_notes: 'Alinhamento com neurologista sobre exames de imagem avançados.',
+    photos: [],
+    created_at: '2026-09-02T11:00:00Z'
+  },
+  {
+    id: 'visit-mo-002',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-rodrigo-prado',
+    visit_date: '2026-09-06',
+    check_in_timestamp: '2026-09-06T15:00:00Z',
+    location_lat: -23.6015,
+    location_lng: -46.6620,
+    workplace_name_snapshot: 'Clínica e Hospital Veterinário VetLife Moema',
+    general_notes: 'Visita de relacionamento. Entrega de bloco de guias.',
+    photos: [],
+    created_at: '2026-09-06T15:00:00Z'
+  },
+  {
+    id: 'visit-mo-003',
+    promoter_id: 'user-promoter-juliana',
     veterinarian_id: 'vet-rodrigo-prado',
     visit_date: '2026-09-11',
     check_in_timestamp: '2026-09-11T10:15:00Z',
     location_lat: -23.6012,
     location_lng: -46.6625,
     workplace_name_snapshot: 'Clínica e Hospital Veterinário VetLife Moema',
-    general_notes: 'Apresentação técnica focada no protocolo de Tomografia Computadorizada Multislice.',
+    general_notes: 'Apresentação técnica focada no protocolo de Tomografia Computadorizada.',
     photos: [],
     created_at: '2026-09-11T10:15:00Z'
   },
   {
-    id: 'visit-mova-003',
+    id: 'visit-mo-004',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-rodrigo-prado',
+    visit_date: '2026-09-14',
+    check_in_timestamp: '2026-09-14T16:20:00Z',
+    location_lat: -23.6010,
+    location_lng: -46.6628,
+    workplace_name_snapshot: 'Clínica e Hospital Veterinário VetLife Moema',
+    general_notes: 'Esclarecimento de dúvidas sobre visualizador PACS em nuvem.',
+    photos: [],
+    created_at: '2026-09-14T16:20:00Z'
+  },
+  {
+    id: 'visit-mo-005',
+    promoter_id: 'user-promoter-fernanda',
+    veterinarian_id: 'vet-rodrigo-prado',
+    visit_date: '2026-09-20',
+    check_in_timestamp: '2026-09-20T14:00:00Z',
+    location_lat: -23.6013,
+    location_lng: -46.6624,
+    workplace_name_snapshot: 'Clínica e Hospital Veterinário VetLife Moema',
+    general_notes: 'Entrega de tabela de preços e convênio.',
+    photos: [],
+    created_at: '2026-09-20T14:00:00Z'
+  },
+
+  // Cluster C: Pacaembu (Dra. Mariana)
+  {
+    id: 'visit-pa-001',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-mariana-costa',
+    visit_date: '2026-09-03',
+    check_in_timestamp: '2026-09-03T14:00:00Z',
+    location_lat: -23.5432,
+    location_lng: -46.6678,
+    workplace_name_snapshot: 'Centro Veterinário CatCare & Oncologia Pacaembu',
+    general_notes: 'Apresentação do portfólio de oncologia e citologia guiada.',
+    photos: [],
+    created_at: '2026-09-03T14:00:00Z'
+  },
+  {
+    id: 'visit-pa-002',
+    promoter_id: 'user-promoter-juliana',
+    veterinarian_id: 'vet-mariana-costa',
+    visit_date: '2026-09-08',
+    check_in_timestamp: '2026-09-08T10:30:00Z',
+    location_lat: -23.5435,
+    location_lng: -46.6674,
+    workplace_name_snapshot: 'Centro Veterinário CatCare & Oncologia Pacaembu',
+    general_notes: 'Visita de relacionamento. Entrega de mimos corporativos.',
+    photos: [],
+    created_at: '2026-09-08T10:30:00Z'
+  },
+  {
+    id: 'visit-pa-003',
     promoter_id: 'user-promoter-lucas',
     veterinarian_id: 'vet-mariana-costa',
     visit_date: '2026-09-12',
@@ -316,12 +451,53 @@ export const INITIAL_VISITS: Visit[] = [
     location_lat: -23.5432,
     location_lng: -46.6678,
     workplace_name_snapshot: 'Centro Veterinário CatCare & Oncologia Pacaembu',
-    general_notes: 'Apresentação dos laudos de Ultrassonografia Abdominal e citologia guiada por imagem.',
+    general_notes: 'Discussão sobre melhorias em prazos de histopatologia.',
     photos: [],
     created_at: '2026-09-12T16:00:00Z'
   },
   {
-    id: 'visit-mova-004',
+    id: 'visit-pa-004',
+    promoter_id: 'user-promoter-fernanda',
+    veterinarian_id: 'vet-mariana-costa',
+    visit_date: '2026-09-17',
+    check_in_timestamp: '2026-09-17T11:45:00Z',
+    location_lat: -23.5430,
+    location_lng: -46.6681,
+    workplace_name_snapshot: 'Centro Veterinário CatCare & Oncologia Pacaembu',
+    general_notes: 'Novidades sobre painéis genéticos felinos.',
+    photos: [],
+    created_at: '2026-09-17T11:45:00Z'
+  },
+
+  // Cluster D: Vila Mariana (Dr. Fernando)
+  {
+    id: 'visit-vm-001',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-fernando-becker',
+    visit_date: '2026-09-04',
+    check_in_timestamp: '2026-09-04T09:00:00Z',
+    location_lat: -23.5891,
+    location_lng: -46.6389,
+    workplace_name_snapshot: 'Hospital Veterinário Prime 24 Horas',
+    general_notes: 'Primeira apresentação do serviço de ecocardiograma móvel.',
+    photos: [],
+    created_at: '2026-09-04T09:00:00Z'
+  },
+  {
+    id: 'visit-vm-002',
+    promoter_id: 'user-promoter-juliana',
+    veterinarian_id: 'vet-fernando-becker',
+    visit_date: '2026-09-09',
+    check_in_timestamp: '2026-09-09T13:30:00Z',
+    location_lat: -23.5895,
+    location_lng: -46.6385,
+    workplace_name_snapshot: 'Hospital Veterinário Prime 24 Horas',
+    general_notes: 'Esclarecimento de dúvidas sobre agendamentos de exames críticos.',
+    photos: [],
+    created_at: '2026-09-09T13:30:00Z'
+  },
+  {
+    id: 'visit-vm-003',
     promoter_id: 'user-promoter-lucas',
     veterinarian_id: 'vet-fernando-becker',
     visit_date: '2026-09-13',
@@ -329,38 +505,12 @@ export const INITIAL_VISITS: Visit[] = [
     location_lat: -23.5891,
     location_lng: -46.6389,
     workplace_name_snapshot: 'Hospital Veterinário Prime 24 Horas',
-    general_notes: 'Alinhamento sobre exames de emergência para pacientes em terapia intensiva.',
+    general_notes: 'Alinhamento sobre exames de emergência para pacientes em UTI.',
     photos: [],
     created_at: '2026-09-13T11:45:00Z'
   },
   {
-    id: 'visit-mova-005',
-    promoter_id: 'user-promoter-lucas',
-    veterinarian_id: 'vet-beatriz-ramos',
-    visit_date: '2026-09-14',
-    check_in_timestamp: '2026-09-14T09:20:00Z',
-    location_lat: -23.4988,
-    location_lng: -46.8521,
-    workplace_name_snapshot: 'Instituto de Ortopedia e Fisioterapia Veterinária Alphaville',
-    general_notes: 'Visita técnica sobre protocolos de ressonância e agendamentos no fim de semana.',
-    photos: [],
-    created_at: '2026-09-14T09:20:00Z'
-  },
-  {
-    id: 'visit-juliana-001',
-    promoter_id: 'user-promoter-juliana',
-    veterinarian_id: 'vet-camila-silveira',
-    visit_date: '2026-09-15',
-    check_in_timestamp: '2026-09-15T15:10:00Z',
-    location_lat: -23.5701,
-    location_lng: -46.6534,
-    workplace_name_snapshot: 'Hospital Veterinário PetCare Jardim Paulista',
-    general_notes: 'Apresentação institucional CardioPet e VetLab. Dra. Camila confirmou início dos encaminhamentos.',
-    photos: [],
-    created_at: '2026-09-15T15:10:00Z'
-  },
-  {
-    id: 'visit-juliana-002',
+    id: 'visit-vm-004',
     promoter_id: 'user-promoter-juliana',
     veterinarian_id: 'vet-fernando-becker',
     visit_date: '2026-09-16',
@@ -368,9 +518,63 @@ export const INITIAL_VISITS: Visit[] = [
     location_lat: -23.5891,
     location_lng: -46.6389,
     workplace_name_snapshot: 'Hospital Veterinário Prime 24 Horas',
-    general_notes: 'Visita de alinhamento com a UTI móvel. Apresentação do serviço de ecocardiograma móvel da CardioPet.',
+    general_notes: 'Visita de alinhamento técnico com plantonistas de UTI.',
     photos: [],
     created_at: '2026-09-16T11:00:00Z'
+  },
+  {
+    id: 'visit-vm-005',
+    promoter_id: 'user-promoter-fernanda',
+    veterinarian_id: 'vet-fernando-becker',
+    visit_date: '2026-09-22',
+    check_in_timestamp: '2026-09-22T16:30:00Z',
+    location_lat: -23.5888,
+    location_lng: -46.6392,
+    workplace_name_snapshot: 'Hospital Veterinário Prime 24 Horas',
+    general_notes: 'Divulgação técnica do portfólio de cardiologia avançada.',
+    photos: [],
+    created_at: '2026-09-22T16:30:00Z'
+  },
+
+  // Cluster E: Alphaville / Barueri (Dra. Beatriz)
+  {
+    id: 'visit-al-001',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-beatriz-ramos',
+    visit_date: '2026-09-07',
+    check_in_timestamp: '2026-09-07T09:15:00Z',
+    location_lat: -23.4988,
+    location_lng: -46.8521,
+    workplace_name_snapshot: 'Instituto de Ortopedia e Fisioterapia Veterinária Alphaville',
+    general_notes: 'Visita técnica sobre agendamentos de Ressonância Magnética.',
+    photos: [],
+    created_at: '2026-09-07T09:15:00Z'
+  },
+  {
+    id: 'visit-al-002',
+    promoter_id: 'user-promoter-lucas',
+    veterinarian_id: 'vet-beatriz-ramos',
+    visit_date: '2026-09-14',
+    check_in_timestamp: '2026-09-14T09:20:00Z',
+    location_lat: -23.4988,
+    location_lng: -46.8521,
+    workplace_name_snapshot: 'Instituto de Ortopedia e Fisioterapia Veterinária Alphaville',
+    general_notes: 'Esclarecimento de dúvidas sobre laudos de posturologia 3D.',
+    photos: [],
+    created_at: '2026-09-14T09:20:00Z'
+  },
+  {
+    id: 'visit-al-003',
+    promoter_id: 'user-promoter-fernanda',
+    veterinarian_id: 'vet-beatriz-ramos',
+    visit_date: '2026-09-21',
+    check_in_timestamp: '2026-09-21T15:00:00Z',
+    location_lat: -23.4991,
+    location_lng: -46.8518,
+    workplace_name_snapshot: 'Instituto de Ortopedia e Fisioterapia Veterinária Alphaville',
+    general_notes: 'Apresentação do novo laudo digital integrado via PACS.',
+    photos: [],
+    created_at: '2026-09-21T15:00:00Z'
   }
 ];
 
