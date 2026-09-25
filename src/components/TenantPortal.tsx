@@ -175,7 +175,14 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
     const vet = visit ? vetMap.get(visit.veterinarian_id) : undefined;
     if (!vet) return false;
 
-    if (sentimentFilter !== 'ALL' && rep.sentiment !== sentimentFilter) return false;
+    if (sentimentFilter !== 'ALL') {
+      if (sentimentFilter === 'positive' && rep.sentiment !== 'positive') return false;
+      if (sentimentFilter === 'neutral' && rep.sentiment !== 'neutral') return false;
+      if (sentimentFilter === 'complaint') {
+        const isCrit = rep.sentiment === 'complaint' || rep.critical_action_needed;
+        if (!isCrit) return false;
+      }
+    }
 
     if (searchTerm.trim() !== '') {
       const q = searchTerm.toLowerCase();
@@ -368,16 +375,32 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
             </div>
 
             {/* Total Accumulative Visits */}
-            <div className="bg-white p-5 rounded-2xl border border-[#E8D9C8] shadow-xs space-y-1">
+            <button
+              type="button"
+              onClick={() => setSentimentFilter('ALL')}
+              className={`text-left p-5 rounded-2xl border shadow-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer w-full focus:outline-none focus:ring-2 focus:ring-[#FF530D]/40 ${
+                sentimentFilter === 'ALL'
+                  ? 'bg-slate-100 border-[#FF530D]/60 ring-2 ring-[#FF530D]/40'
+                  : 'bg-white border-[#E8D9C8]'
+              }`}
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Histórico Acumulado
               </span>
               <div className="text-3xl font-black text-[#111111]">{totalReports}</div>
               <p className="text-xs text-slate-500">Abordagens totais realizadas</p>
-            </div>
+            </button>
 
             {/* Positive Sentiment */}
-            <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-xs space-y-1">
+            <button
+              type="button"
+              onClick={() => setSentimentFilter('positive')}
+              className={`text-left p-5 rounded-2xl border shadow-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
+                sentimentFilter === 'positive'
+                  ? 'bg-emerald-100 border-emerald-400 ring-2 ring-emerald-500/40'
+                  : 'bg-emerald-50 border-emerald-200'
+              }`}
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
                 Receptividade Positiva
               </span>
@@ -385,25 +408,41 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                 {positiveCount} <span className="text-sm font-bold text-emerald-700">({positiveRatio}%)</span>
               </div>
               <p className="text-xs text-emerald-800 font-medium">Interesse imediato em encaminhamento</p>
-            </div>
+            </button>
 
             {/* In Evaluation / Neutral */}
-            <div className="bg-[#FDF2E7] p-5 rounded-2xl border border-[#E8D9C8] shadow-xs space-y-1">
+            <button
+              type="button"
+              onClick={() => setSentimentFilter('neutral')}
+              className={`text-left p-5 rounded-2xl border shadow-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer w-full focus:outline-none focus:ring-2 focus:ring-slate-500/40 ${
+                sentimentFilter === 'neutral'
+                  ? 'bg-slate-200 border-slate-400 ring-2 ring-slate-500/40'
+                  : 'bg-[#FDF2E7] border-[#E8D9C8]'
+              }`}
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                 Em Análise / Neutro
               </span>
               <div className="text-3xl font-black text-[#111111]">{neutralCount}</div>
               <p className="text-xs text-slate-600">Aguardando lâmina ou contato D+7</p>
-            </div>
+            </button>
 
             {/* Critical Alerts */}
-            <div className="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-xs space-y-1">
+            <button
+              type="button"
+              onClick={() => setSentimentFilter('complaint')}
+              className={`text-left p-5 rounded-2xl border shadow-xs space-y-1 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer w-full focus:outline-none focus:ring-2 focus:ring-rose-500/40 ${
+                sentimentFilter === 'complaint'
+                  ? 'bg-rose-100 border-rose-400 ring-2 ring-rose-500/40'
+                  : 'bg-rose-50 border-rose-200'
+              }`}
+            >
               <span className="text-xs font-bold uppercase tracking-wider text-[#D90000]">
                 Alertas Críticos
               </span>
               <div className="text-3xl font-black text-[#D90000]">{complaintCount}</div>
               <p className="text-xs text-rose-800 font-medium">Reclamações ou pendências comerciais</p>
-            </div>
+            </button>
           </div>
 
           {/* Filter and Search Bar */}

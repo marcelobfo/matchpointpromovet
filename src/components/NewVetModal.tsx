@@ -105,6 +105,10 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
     if (files && files[0]) {
       processImageFile(files[0]);
     }
+    const elCam = document.getElementById('input-vet-avatar-camera') as HTMLInputElement | null;
+    if (elCam) elCam.value = '';
+    const elGal = document.getElementById('input-vet-avatar-gallery') as HTMLInputElement | null;
+    if (elGal) elGal.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -240,32 +244,62 @@ export const NewVetModal: React.FC<NewVetModalProps> = ({
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  onClick={() => {
-                    const el = document.getElementById('input-vet-avatar-file') as HTMLInputElement | null;
-                    if (el) el.click();
-                  }}
-                  className={`border-2 border-dashed rounded-xl p-3 text-center transition-all cursor-pointer ${
+                  className={`border-2 border-dashed rounded-xl p-3 text-center transition-all ${
                     isDragging
                       ? 'border-[#FF530D] bg-[#FF530D]/10'
-                      : 'border-slate-300 hover:border-[#FF530D] bg-white'
+                      : 'border-slate-300 bg-white'
                   }`}
                 >
+                  {/* Camera input */}
                   <input
-                    id="input-vet-avatar-file"
+                    id="input-vet-avatar-camera"
                     type="file"
                     accept="image/*"
                     capture="user"
-                    onClick={(e) => e.stopPropagation()}
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  <div className="flex items-center justify-center gap-2 text-xs text-slate-700 font-semibold">
-                    <Upload className="h-4 w-4 text-[#FF530D]" />
-                    <span>Clique ou arraste uma foto aqui</span>
+                  {/* Gallery input */}
+                  <input
+                    id="input-vet-avatar-gallery"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 w-full">
+                      {/* Camera Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          document.getElementById('input-vet-avatar-camera')?.click();
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#FF530D] text-white hover:bg-[#e04405] text-[11px] font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                      >
+                        <Camera className="h-3.5 w-3.5 shrink-0" />
+                        <span>Tirar Foto</span>
+                      </button>
+
+                      {/* Gallery Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          document.getElementById('input-vet-avatar-gallery')?.click();
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white text-[#111111] hover:bg-slate-50 border border-slate-300 text-[11px] font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                      >
+                        <Upload className="h-3.5 w-3.5 shrink-0 text-[#FF530D]" />
+                        <span>Galeria</span>
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      Arraste um arquivo ou use uma das opções. JPG, PNG, WebP.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Formatos JPG, PNG ou WebP (Câmera ou Galeria do Celular)
-                  </p>
                 </div>
 
                 {/* Direct URL input fallback */}

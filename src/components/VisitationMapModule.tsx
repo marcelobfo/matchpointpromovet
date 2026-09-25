@@ -10,7 +10,9 @@ import {
   Building,
   User,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Visit, Veterinarian, Tenant, User as PromoterUser } from '../types';
 import { StorageService } from '../services/storage';
@@ -781,9 +783,14 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
                     <span className="h-3 w-3 rounded-full bg-red-500 inline-block animate-pulse shrink-0" />
                     <span>🔥 Quente (Alta Densidade)</span>
                   </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className="font-mono text-[9px] text-red-600 font-extrabold bg-red-100/60 px-1 py-0.5 rounded">&gt;= 5 visitas</span>
                     <span className="text-[10px] font-extrabold text-slate-400">({categories.hot.length})</span>
+                    {expandedCategory === 'hot' ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-red-600" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                    )}
                   </div>
                 </button>
                 {expandedCategory === 'hot' && (
@@ -823,9 +830,14 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
                     <span className="h-3 w-3 rounded-full bg-amber-500 inline-block shrink-0" />
                     <span>🌤️ Morna (Média Densidade)</span>
                   </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className="font-mono text-[9px] text-amber-600 font-extrabold bg-amber-100/60 px-1 py-0.5 rounded">2-4 visitas</span>
                     <span className="text-[10px] font-extrabold text-slate-400">({categories.warm.length})</span>
+                    {expandedCategory === 'warm' ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-amber-600" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                    )}
                   </div>
                 </button>
                 {expandedCategory === 'warm' && (
@@ -865,9 +877,14 @@ export const VisitationMapModule: React.FC<VisitationMapModuleProps> = ({
                     <span className="h-3 w-3 rounded-full bg-blue-500 inline-block shrink-0" />
                     <span>❄️ Fria (Baixa Densidade)</span>
                   </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className="font-mono text-[9px] text-blue-600 font-extrabold bg-blue-100/60 px-1 py-0.5 rounded">&lt; 2 visitas</span>
                     <span className="text-[10px] font-extrabold text-slate-400">({categories.cold.length})</span>
+                    {expandedCategory === 'cold' ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-blue-600" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                    )}
                   </div>
                 </button>
                 {expandedCategory === 'cold' && (

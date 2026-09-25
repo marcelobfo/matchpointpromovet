@@ -255,10 +255,10 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
         if (f) processPhotoFile(f);
       }
     }
-    const el = document.getElementById('input-visit-photos-file') as HTMLInputElement | null;
-    if (el) {
-      el.value = '';
-    }
+    const elCam = document.getElementById('input-visit-photos-camera') as HTMLInputElement | null;
+    if (elCam) elCam.value = '';
+    const elGal = document.getElementById('input-visit-photos-gallery') as HTMLInputElement | null;
+    if (elGal) elGal.value = '';
   };
 
   const handlePhotoDrop = (e: React.DragEvent) => {
@@ -339,11 +339,6 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
     setFormError(null);
     if (!tenantId) return;
     if (selectedTenantIds.includes(tenantId)) return;
-
-    if (selectedTenantIds.length >= 3) {
-      setFormError('Limite atingido: Você pode representar no máximo 3 contratantes por visita.');
-      return;
-    }
 
     setSelectedTenantIds([...selectedTenantIds, tenantId]);
   };
@@ -1095,34 +1090,65 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                         }}
                         onDragLeave={() => setIsDraggingPhotos(false)}
                         onDrop={handlePhotoDrop}
-                        onClick={() => {
-                          const el = document.getElementById('input-visit-photos-file') as HTMLInputElement | null;
-                          if (el) el.click();
-                        }}
-                        className={`border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer ${
+                        className={`border-2 border-dashed rounded-xl p-5 text-center transition-all ${
                           isDraggingPhotos
                             ? 'border-[#FF530D] bg-[#FF530D]/10'
-                            : 'border-[#E8D9C8] hover:border-[#FF530D] bg-[#FDF2E7]/40 hover:bg-[#FDF2E7]'
+                            : 'border-[#E8D9C8] bg-[#FDF2E7]/20 hover:bg-[#FDF2E7]/40'
                         }`}
                       >
+                        {/* Hidden input for Camera */}
                         <input
-                          id="input-visit-photos-file"
+                          id="input-visit-photos-camera"
                           type="file"
                           accept="image/*"
                           multiple
                           capture="environment"
-                          onClick={(e) => e.stopPropagation()}
                           onChange={handlePhotosChange}
                           className="hidden"
                         />
-                        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#111111]">
-                          <Camera className="h-4 w-4 text-[#FF530D]" />
-                          <Upload className="h-4 w-4 text-[#FF530D]" />
-                          <span>Tirar Foto ou Anexar da Galeria</span>
+                        {/* Hidden input for Gallery */}
+                        <input
+                          id="input-visit-photos-gallery"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handlePhotosChange}
+                          className="hidden"
+                        />
+
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md">
+                            {/* Camera Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                document.getElementById('input-visit-photos-camera')?.click();
+                              }}
+                              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FF530D] text-white hover:bg-[#e04405] text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                            >
+                              <Camera className="h-4 w-4 shrink-0" />
+                              <span>Tirar Foto</span>
+                            </button>
+
+                            {/* Gallery Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                document.getElementById('input-visit-photos-gallery')?.click();
+                              }}
+                              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-[#111111] hover:bg-slate-50 border border-[#E8D9C8] text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                            >
+                              <Upload className="h-4 w-4 shrink-0 text-[#FF530D]" />
+                              <span>Anexar do Dispositivo</span>
+                            </button>
+                          </div>
+                          
+                          <p className="text-[10px] text-slate-500 font-medium">
+                            Arraste imagens aqui ou escolha uma opção acima. Múltiplas imagens (JPG, PNG, WebP) suportadas.
+                          </p>
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          Suporta múltiplas imagens (JPG, PNG, WebP) com compressão automática
-                        </p>
                       </div>
 
                       {/* Photos Preview Grid */}
@@ -1189,7 +1215,7 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
               </div>
             ) : (
               <>
-                {/* Multi-Tenant Selector via Dropdown + Tags (Max 3 limit) */}
+                {/* Multi-Tenant Selector via Dropdown + Tags (No limit) */}
                 <div className="bg-white rounded-2xl p-5 border border-[#E8D9C8] shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -1198,18 +1224,14 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                     2. Seleção de Contratantes para Representar
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Regra de Negócio: Até <strong>3 marcas não-concorrentes</strong> simultâneas por visita.
+                    Selecione as marcas contratantes representadas nesta visita.
                   </p>
                 </div>
 
                 <span
-                  className={`text-xs font-extrabold px-3 py-1 rounded-full self-start sm:self-auto ${
-                    selectedTenantIds.length === 3
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                      : 'bg-[#FF530D]/10 text-[#FF530D]'
-                  }`}
+                  className="text-xs font-extrabold px-3 py-1 rounded-full bg-[#FF530D]/10 text-[#FF530D] self-start sm:self-auto"
                 >
-                  {selectedTenantIds.length} de 3 Selecionados
+                  {selectedTenantIds.length} Selecionado{selectedTenantIds.length !== 1 ? 's' : ''}
                 </span>
               </div>
 
@@ -1235,7 +1257,7 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                           <option
                             key={t.id}
                             value={t.id}
-                            disabled={isAlreadySelected || (selectedTenantIds.length >= 3 && !isAlreadySelected)}
+                            disabled={isAlreadySelected}
                           >
                             {t.trade_name} ({t.segment}) {isAlreadySelected ? '✓ Já Selecionado' : ''}
                           </option>
@@ -1275,7 +1297,11 @@ export const FieldModule: React.FC<FieldModuleProps> = ({
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleRemoveTenantRepresentation(tenantId)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRemoveTenantRepresentation(tenantId);
+                            }}
                             className="p-0.5 text-slate-400 hover:text-red-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer ml-1"
                             title="Remover marca desta visita"
                           >
