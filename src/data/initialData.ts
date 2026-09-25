@@ -581,7 +581,7 @@ export const INITIAL_VISITS: Visit[] = [
 export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   {
     id: 'rep-mova-001',
-    visit_id: 'visit-mova-001',
+    visit_id: 'visit-jp-003',
     tenant_id: 'tenant-mova',
     observations: 'Dra. Camila elogiou a proposta do Ecocardiograma com laudo express em 2 horas. Solicitou a tabela de convênio e bloco de encaminhamento digital para o hospital.',
     sentiment: 'positive',
@@ -591,7 +591,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-mova-002',
-    visit_id: 'visit-mova-002',
+    visit_id: 'visit-mo-003',
     tenant_id: 'tenant-mova',
     observations: 'Dr. Rodrigo demonstrou forte interesse no protocolo de Tomografia Computadorizada da Mova para hérnias de disco e reconstrução 3D. Encaminhará 3 a 4 casos por semana.',
     sentiment: 'positive',
@@ -601,7 +601,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-mova-003',
-    visit_id: 'visit-mova-003',
+    visit_id: 'visit-pa-003',
     tenant_id: 'tenant-mova',
     observations: 'Dra. Mariana relatou insatisfação com prazos de laudos do antigo prestador. Destacou o diferencial do portal online da Mova e solicitou login de acesso médico para emissão direta.',
     sentiment: 'positive',
@@ -611,7 +611,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-mova-004',
-    visit_id: 'visit-mova-004',
+    visit_id: 'visit-vm-003',
     tenant_id: 'tenant-mova',
     observations: 'Dr. Fernando solicitou visita técnica do médico radiologista da Mova para treinamento rápido da equipe de plantonistas sobre encaminhamento em emergências cardiológicas.',
     sentiment: 'neutral',
@@ -621,7 +621,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-mova-005',
-    visit_id: 'visit-mova-005',
+    visit_id: 'visit-al-002',
     tenant_id: 'tenant-mova',
     observations: 'Dra. Beatriz apontou que teve dificuldade no último sábado para encaixe de uma Ressonância Magnética de emergência. Necessita de contato direto do coordenador de plantão da Mova.',
     sentiment: 'complaint',
@@ -631,7 +631,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-vetlab-001',
-    visit_id: 'visit-mova-001',
+    visit_id: 'visit-jp-003',
     tenant_id: 'tenant-vetlab',
     observations: 'Dra. Camila elogiou a agilidade da coleta de exames do VetLab e a liberação de hemograma em 45 minutos. Solicitou tubos de coleta e formulários de requisição.',
     sentiment: 'positive',
@@ -641,7 +641,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-cardiopet-001',
-    visit_id: 'visit-mova-003',
+    visit_id: 'visit-pa-003',
     tenant_id: 'tenant-cardiopet',
     observations: 'Dra. Mariana tem interesse em encaminhar casos de estenose aórtica e arritmias felinas para a equipe de eletrofisiologia da CardioPet.',
     sentiment: 'positive',
@@ -651,7 +651,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-cardiopet-002',
-    visit_id: 'visit-juliana-001',
+    visit_id: 'visit-jp-004',
     tenant_id: 'tenant-cardiopet',
     observations: 'Dra. Camila solicitou tabela de exames cardiológicos da CardioPet e material para prescrição.',
     sentiment: 'positive',
@@ -661,7 +661,7 @@ export const INITIAL_VISIT_REPORTS: VisitReport[] = [
   },
   {
     id: 'rep-cardiopet-003',
-    visit_id: 'visit-juliana-002',
+    visit_id: 'visit-vm-004',
     tenant_id: 'tenant-cardiopet',
     observations: 'Dr. Fernando aprovou o protocolo de emergência cardiológica da CardioPet para plantão de UTI.',
     sentiment: 'positive',

@@ -22,21 +22,21 @@ import {
 import { SupabaseService } from './supabase';
 
 const STORAGE_KEYS = {
-  TENANTS: 'matchpoint_prod_tenants_v4',
-  USERS: 'matchpoint_prod_users_v4',
-  VETS: 'matchpoint_prod_vets_v4',
-  VISITS: 'matchpoint_prod_visits_v4',
-  VISIT_REPORTS: 'matchpoint_prod_visit_reports_v4',
-  FOLLOW_UP_TASKS: 'matchpoint_prod_follow_up_tasks_v4',
-  INSTAGRAM_LEADS: 'matchpoint_prod_instagram_leads_v4',
-  CURRENT_USER_ID: 'matchpoint_prod_current_user_id_v4',
-  CURRENT_TENANT_ID: 'matchpoint_prod_current_tenant_id_v4',
-  IS_AUTHENTICATED: 'matchpoint_prod_is_authenticated_v4',
-  CUSTOM_PASSWORDS: 'matchpoint_prod_custom_passwords_v4',
-  CONTRACT_TEMPLATE: 'matchpoint_prod_contract_template_v4',
-  ZAPSIGN_API_KEY: 'matchpoint_prod_zapsign_api_key_v4',
-  GIFTS: 'matchpoint_prod_gifts_v4',
-  GIFT_LOGS: 'matchpoint_prod_gift_logs_v4'
+  TENANTS: 'matchpoint_prod_tenants_v5',
+  USERS: 'matchpoint_prod_users_v5',
+  VETS: 'matchpoint_prod_vets_v5',
+  VISITS: 'matchpoint_prod_visits_v5',
+  VISIT_REPORTS: 'matchpoint_prod_visit_reports_v5',
+  FOLLOW_UP_TASKS: 'matchpoint_prod_follow_up_tasks_v5',
+  INSTAGRAM_LEADS: 'matchpoint_prod_instagram_leads_v5',
+  CURRENT_USER_ID: 'matchpoint_prod_current_user_id_v5',
+  CURRENT_TENANT_ID: 'matchpoint_prod_current_tenant_id_v5',
+  IS_AUTHENTICATED: 'matchpoint_prod_is_authenticated_v5',
+  CUSTOM_PASSWORDS: 'matchpoint_prod_custom_passwords_v5',
+  CONTRACT_TEMPLATE: 'matchpoint_prod_contract_template_v5',
+  ZAPSIGN_API_KEY: 'matchpoint_prod_zapsign_api_key_v5',
+  GIFTS: 'matchpoint_prod_gifts_v5',
+  GIFT_LOGS: 'matchpoint_prod_gift_logs_v5'
 };
 
 // Purge old homologation storage keys if any
@@ -53,7 +53,23 @@ if (typeof window !== 'undefined') {
       'vetcrm_current_user_id_v1',
       'vetcrm_current_tenant_id_v1',
       'vetcrm_is_authenticated_v1',
-      'vetcrm_custom_passwords_v1'
+      'vetcrm_custom_passwords_v1',
+      'matchpoint_prod_tenants_v4',
+      'matchpoint_prod_users_v4',
+      'matchpoint_prod_vets_v4',
+      'matchpoint_prod_visits_v4',
+      'matchpoint_prod_visit_reports_v4',
+      'matchpoint_prod_follow_up_tasks_v4',
+      'matchpoint_prod_instagram_leads_v4',
+      'matchpoint_prod_current_user_id_v4',
+      'matchpoint_prod_current_tenant_id_v4',
+      'matchpoint_prod_is_authenticated_v4',
+      'matchpoint_prod_custom_passwords_v4',
+      'matchpoint_prod_contract_template_v4',
+      'matchpoint_prod_zapsign_api_key_v4',
+      'matchpoint_prod_gifts_v4',
+      'matchpoint_prod_gift_logs_v4',
+      'matchpoint_system_mode_v4'
     ];
     legacyKeys.forEach((k) => localStorage.removeItem(k));
   } catch {
@@ -80,7 +96,7 @@ function setLocal<T>(key: string, value: T): void {
   }
 }
 
-const MODE_KEY = 'matchpoint_system_mode_v4';
+const MODE_KEY = 'matchpoint_system_mode_v5';
 
 export const replaceContractPlaceholders = (template: string, tenant: any): string => {
   const dateStr = new Date().toLocaleDateString('pt-BR');

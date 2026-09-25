@@ -200,7 +200,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
               className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-sm shrink-0 mt-0.5 sm:mt-0"
               style={{ backgroundColor: activeTenant?.color_theme || '#FF530D' }}
             >
-              {activeTenant?.trade_name.substring(0, 1)}
+              {activeTenant?.trade_name?.substring(0, 1) || 'T'}
             </div>
             <div className="space-y-1 min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -522,7 +522,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                               />
                             ) : (
                               <div className="h-11 w-11 rounded-full bg-[#FDF2E7] text-[#FF530D] font-black text-sm flex items-center justify-center border border-[#E8D9C8]">
-                                {vet?.full_name.substring(0, 2)}
+                                {vet?.full_name?.substring(0, 2) || 'VT'}
                               </div>
                             )}
                             <div>
@@ -683,7 +683,7 @@ export const TenantPortal: React.FC<TenantPortalProps> = ({
                   className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-md shrink-0 mt-0.5 sm:mt-0"
                   style={{ backgroundColor: activeTenant?.color_theme || '#FF530D' }}
                 >
-                  {activeTenant?.trade_name.substring(0, 1)}
+                  {activeTenant?.trade_name?.substring(0, 1) || 'T'}
                 </div>
                 <div className="space-y-0.5 min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
